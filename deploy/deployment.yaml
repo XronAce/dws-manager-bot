@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dws-manager
+  namespace: dws-manager
+  labels:
+    app: dws-manager
+spec:
+  # Must stay at 1. A second replica would open a second Discord gateway
+  # session and every scheduled announcement would be posted twice.
+  replicas: 1
+  strategy:
+    type: Recreate          # avoids two gateway sessions overlapping on rollout
+  selector:
+    matchLabels:
+      app: dws-manager
+  template:
+    metadata:
+      labels:
+        app: dws-manager
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: app
+          image: ghcr.io/xronace/dws-manager-bot:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: dws-manager-secrets
+          env:
+            - name: API_HOST
+              value: "0.0.0.0"
+            - name: API_PORT
+              value: "8000"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          # The bot needs time to connect to the Discord gateway before it is
+          # meaningfully "ready", so the readiness probe is given a slow start.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 4
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]

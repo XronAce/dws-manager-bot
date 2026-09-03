@@ -1,0 +1,112 @@
+import { useEffect, useState } from 'react'
+import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/api.js'
+import Announcements from './pages/Announcements.jsx'
+import Events from './pages/Events.jsx'
+import Members from './pages/Members.jsx'
+
+const TABS = [
+  { id: 'announcements', label: 'Announcements', Component: Announcements },
+  { id: 'events', label: 'Events', Component: Events },
+  { id: 'members', label: 'Roster', Component: Members },
+]
+
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [authError, setAuthError] = useState(null)
+  const [tab, setTab] = useState('announcements')
+  const [health, setHealth] = useState(null)
+
+  useEffect(() => {
+    const result = consumeTokenFromUrl()
+    if (result?.error === 'not_authorised') {
+      setAuthError('That Discord account does not hold an officer role in the alliance.')
+      setStatus('anonymous')
+      return
+    }
+    if (!getToken()) {
+      setStatus('anonymous')
+      return
+    }
+    api
+      .me()
+      .then((me) => {
+        setUser(me)
+        setStatus('ready')
+      })
+      .catch(() => setStatus('anonymous'))
+  }, [])
+
+  useEffect(() => {
+    if (status !== 'ready') return
+    const tick = () => api.health().then(setHealth).catch(() => setHealth(null))
+    tick()
+    const timer = setInterval(tick, 30000)
+    return () => clearInterval(timer)
+  }, [status])
+
+  if (status === 'loading') {
+    return <div className="centered muted">Loading…</div>
+  }
+
+  if (status === 'anonymous') {
+    return (
+      <div className="centered">
+        <div className="login-card">
+          <h1>DWS Alliance Manager</h1>
+          <p className="muted">Sign in with the Discord account that holds your officer role.</p>
+          {authError && <p className="error">{authError}</p>}
+          <a className="btn primary" href={loginUrl()}>
+            Sign in with Discord
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  const Active = TABS.find((t) => t.id === tab).Component
+
+  return (
+    <div className="app">
+      <header>
+        <div className="brand">
+          <strong>DWS Alliance Manager</strong>
+          {health && (
+            <span className="health" title={`${health.scheduled_jobs} jobs scheduled`}>
+              <span className={`dot ${health.discord ? 'ok' : 'bad'}`} />
+              {health.bot_user ?? 'bot offline'}
+              <span className={`dot ${health.database ? 'ok' : 'bad'}`} />
+              db
+            </span>
+          )}
+        </div>
+        <nav>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={t.id === tab ? 'tab active' : 'tab'}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <div className="user">
+          <span className="muted">{user.username}</span>
+          <button
+            className="btn ghost"
+            onClick={() => {
+              clearToken()
+              window.location.reload()
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+      <main>
+        <Active />
+      </main>
+    </div>
+  )
+}

@@ -1,0 +1,171 @@
+"""Pydantic request/response models for the backoffice API."""
+from __future__ import annotations
+
+from datetime import datetime
+
+from croniter import croniter
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .models import ScheduleKind
+
+
+class ORMModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ------------------------------------------------------------- announcements
+
+class AnnouncementBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    enabled: bool = True
+    channel_id: int
+    kind: ScheduleKind = ScheduleKind.CRON
+    cron_expr: str | None = None
+    interval_minutes: int | None = Field(None, ge=1)
+    run_at: datetime | None = None
+    timezone: str = "Asia/Seoul"
+    title: str | None = Field(None, max_length=256)
+    body: str = Field(..., min_length=1)
+    use_embed: bool = True
+    embed_color: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
+    mention: str | None = None
+    event_id: int | None = None
+    lead_minutes: int = Field(0, ge=0, le=10080)
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_timezone(cls, v: str) -> str:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"unknown timezone: {v}") from exc
+        return v
+
+    @model_validator(mode="after")
+    def _schedule_is_complete(self):
+        """Reject a schedule the scheduler would silently refuse to register."""
+        if self.kind == ScheduleKind.CRON:
+            if not self.cron_expr:
+                raise ValueError("cron_expr is required when kind is 'cron'")
+            if not croniter.is_valid(self.cron_expr):
+                raise ValueError(f"invalid cron expression: {self.cron_expr}")
+        elif self.kind == ScheduleKind.INTERVAL and not self.interval_minutes:
+            raise ValueError("interval_minutes is required when kind is 'interval'")
+        elif self.kind == ScheduleKind.ONCE and not self.run_at:
+            raise ValueError("run_at is required when kind is 'once'")
+        elif self.kind == ScheduleKind.EVENT and not self.event_id:
+            raise ValueError("event_id is required when kind is 'event'")
+        return self
+
+
+class AnnouncementCreate(AnnouncementBase):
+    pass
+
+
+class AnnouncementUpdate(AnnouncementBase):
+    pass
+
+
+class AnnouncementOut(ORMModel, AnnouncementBase):
+    id: int
+    last_fired_at: datetime | None = None
+    last_error: str | None = None
+    fire_count: int = 0
+    next_run_at: datetime | None = None   # filled from the live scheduler
+
+
+# -------------------------------------------------------------------- events
+
+class EventBase(BaseModel):
+    key: str = Field(..., min_length=1, max_length=64, pattern=r"^[a-z0-9][a-z0-9\-_]*$")
+    name: str = Field(..., min_length=1, max_length=120)
+    description: str | None = None
+    enabled: bool = True
+    schedule_type: str = Field("weekly", pattern=r"^(weekly|rotation|fixed)$")
+    weekdays: list[int] | None = None
+    rotation_days: int | None = Field(None, ge=1, le=365)
+    reference_date: datetime | None = None
+    fixed_dates: list[str] | None = None
+    start_time: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    duration_minutes: int = Field(60, ge=1)
+    timezone: str = "Asia/Seoul"
+    signup_enabled: bool = False
+
+    @field_validator("weekdays")
+    @classmethod
+    def _valid_weekdays(cls, v):
+        if v and any(d < 0 or d > 6 for d in v):
+            raise ValueError("weekdays must be 0 (Monday) through 6 (Sunday)")
+        return v
+
+    @model_validator(mode="after")
+    def _schedule_is_complete(self):
+        if self.schedule_type == "weekly" and not self.weekdays:
+            raise ValueError("weekdays is required when schedule_type is 'weekly'")
+        if self.schedule_type == "rotation" and not (self.rotation_days and self.reference_date):
+            raise ValueError("rotation_days and reference_date are required for 'rotation'")
+        if self.schedule_type == "fixed" and not self.fixed_dates:
+            raise ValueError("fixed_dates is required when schedule_type is 'fixed'")
+        return self
+
+
+class EventCreate(EventBase):
+    pass
+
+
+class EventOut(ORMModel, EventBase):
+    id: int
+    upcoming: list[datetime] = []
+
+
+# ------------------------------------------------------------------- members
+
+class MemberOut(ORMModel):
+    id: int
+    discord_id: int
+    discord_name: str | None = None
+    game_name: str | None = None
+    rank: int | None = None
+    power: int | None = None
+    timezone: str | None = None
+    active: bool
+    notes: str | None = None
+
+
+class MemberUpdate(BaseModel):
+    game_name: str | None = None
+    rank: int | None = Field(None, ge=1, le=5)
+    power: int | None = Field(None, ge=0)
+    timezone: str | None = None
+    active: bool | None = None
+    notes: str | None = None
+
+
+# ---------------------------------------------------------------------- meta
+
+class ChannelOut(BaseModel):
+    id: int
+    name: str
+    category: str | None = None
+
+
+class RoleOut(BaseModel):
+    id: int
+    name: str
+    color: str | None = None
+
+
+class MeOut(BaseModel):
+    discord_id: int
+    username: str
+    is_admin: bool
+
+
+class HealthOut(BaseModel):
+    status: str
+    database: bool
+    discord: bool
+    scheduled_jobs: int
+    bot_user: str | None = None
