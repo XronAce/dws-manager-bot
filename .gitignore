@@ -10,6 +10,9 @@ venv/
 # Secrets — never commit these
 .env
 .env.local
+# The filled-in copy of deploy/secret.example.yaml. Both spellings, because
+# `*.secret.yaml` alone does NOT match a file simply named secret.yaml.
+deploy/secret.yaml
 *.secret.yaml
 
 # Node / frontend
