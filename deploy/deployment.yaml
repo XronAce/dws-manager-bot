@@ -24,7 +24,7 @@ spec:
         - name: ghcr-pull-secret
       containers:
         - name: app
-          image: ghcr.io/xronace/dws-manager-bot:latest
+          image: ghcr.io/dws-manager-bot/dws-manager-bot:latest
           imagePullPolicy: Always
           ports:
             - name: http

@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages serves a project site under /<repo>/, so assets must be
-// requested from that prefix rather than the domain root.
+// This is an organisation site (repo dws-manager-bot.github.io), served from
+// the domain root, so assets are requested from "/" rather than a repo prefix.
 export default defineConfig({
   plugins: [react()],
-  base: process.env.VITE_BASE ?? '/dws-manager-bot/',
+  base: process.env.VITE_BASE ?? '/',
   build: { outDir: 'dist', sourcemap: false },
 })

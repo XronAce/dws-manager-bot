@@ -5,7 +5,7 @@ scheduled announcements, a recurring event calendar with signups, and a member
 roster — all configurable from a browser instead of by editing code.
 
 ```
-GitHub Pages  ──  xronace.github.io/dws-manager-bot        static backoffice (HTTPS)
+GitHub Pages  ──  dws-manager-bot.github.io                static backoffice (HTTPS)
       │           Discord OAuth2 login → short-lived JWT
       ▼
 https://dws-api.xronocore.qzz.io                            Cloudflare tunnel, edge TLS
@@ -136,8 +136,12 @@ cloudflared tunnel route dns <tunnel-name> dws-api.xronocore.qzz.io
 In the GitHub repo: **Settings → Pages → Source: GitHub Actions**, and set
 repository variable `VITE_API_URL` to `https://dws-api.xronocore.qzz.io`.
 
+The repo is named `dws-manager-bot.github.io` inside the org of the same
+name, which makes it an *organisation site* served from the domain root.
+That is why Vite's `base` is `/` rather than a repo subpath.
+
 Pushing to `main` builds and publishes it. The API's `CORS_ORIGINS` must include
-`https://xronace.github.io`, and `FRONTEND_URL` must be the full Pages URL.
+`https://dws-manager-bot.github.io`, and `FRONTEND_URL` must be the full Pages URL.
 
 ---
 

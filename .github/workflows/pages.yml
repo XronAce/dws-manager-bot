@@ -39,7 +39,8 @@ jobs:
           # Set this under Settings > Secrets and variables > Actions > Variables.
           # It is baked into the bundle, so it must be a public URL — never a secret.
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://dws-api.xronocore.qzz.io' }}
-          VITE_BASE: /${{ github.event.repository.name }}/
+          # Organisation site: served from the root, not a repo subpath.
+          VITE_BASE: /
 
       # Pages serves static files, so a deep link like /events would 404 on
       # reload. Copying index.html to 404.html hands routing back to the SPA.

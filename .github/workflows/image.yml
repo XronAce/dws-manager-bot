@@ -42,7 +42,9 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/dws-manager-bot
+          # Pinned rather than interpolated: the repo is named
+          # dws-manager-bot.github.io, which is not the image name we want.
+          images: ghcr.io/dws-manager-bot/dws-manager-bot
           tags: |
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}

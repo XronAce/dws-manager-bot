@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # registered on the application, and points at THIS api, not the SPA.
     oauth_redirect_uri: str = "https://dws-api.xronocore.qzz.io/auth/callback"
     # Where the API bounces the browser once a session is minted.
-    frontend_url: str = "https://xronace.github.io/dws-manager-bot"
+    frontend_url: str = "https://dws-manager-bot.github.io"
 
     # Discord role names that may use the backoffice and admin bot commands.
     admin_roles: Annotated[list[str], NoDecode] = Field(
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # production one; localhost entries make `npm run dev` work.
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
-            "https://xronace.github.io",
+            "https://dws-manager-bot.github.io",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ]
