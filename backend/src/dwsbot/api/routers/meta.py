@@ -23,7 +23,9 @@ async def list_channels(_: AdminUser):
 
     guild = bot.get_guild(get_settings().guild_id)
     if guild is None:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Bot is not in the guild yet")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet"
+        )
 
     return [
         ChannelOut(
@@ -42,7 +44,9 @@ async def list_roles(_: AdminUser):
 
     guild = bot.get_guild(get_settings().guild_id)
     if guild is None:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Bot is not in the guild yet")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet"
+        )
 
     return [
         RoleOut(id=r.id, name=r.name, color=f"#{r.colour.value:06x}")

@@ -93,13 +93,19 @@ async def test_announcement(announcement_id: int, session: DbSession, user: Admi
     if ann is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
     if not bot.is_ready():
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Bot is not connected yet")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet — try again"
+        )
 
     try:
         await bot.send_announcement(ann)
     except Exception as exc:
+        # Deliberately 409 and not 502. Cloudflare treats an origin 5xx as its
+        # own gateway failure: it replaces the body with "error code: 502" and
+        # drops the CORS headers, so the browser reports a bare "Failed to
+        # fetch" and this message never reaches the user.
         raise HTTPException(
-            status.HTTP_502_BAD_GATEWAY, f"Discord rejected it: {exc}"
+            status.HTTP_409_CONFLICT, f"Discord refused the message: {exc}"
         ) from exc
 
     await write_audit(session, user, "announcement.test", "announcement", ann.id, None)

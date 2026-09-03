@@ -1,12 +1,30 @@
 """Pydantic request/response models for the backoffice API."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Annotated
 
 from croniter import croniter
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    field_validator,
+    model_validator,
+)
 
 from .models import ScheduleKind
+
+# A Discord snowflake is ~1.5e18, while JavaScript's Number.MAX_SAFE_INTEGER is
+# only ~9.0e15. Sent as a JSON number it silently loses precision in the
+# browser -- both on JSON.parse and on the way back -- which yields a valid
+# looking but nonexistent channel id and an "Unknown Channel" from Discord.
+# Kept as int server-side, always rendered as a string in JSON.
+Snowflake = Annotated[
+    int,
+    PlainSerializer(str, return_type=str, when_used="json-unless-none"),
+]
 
 
 class ORMModel(BaseModel):
@@ -18,7 +36,7 @@ class ORMModel(BaseModel):
 class AnnouncementBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     enabled: bool = True
-    channel_id: int
+    channel_id: Snowflake
     kind: ScheduleKind = ScheduleKind.CRON
     cron_expr: str | None = None
     interval_minutes: int | None = Field(None, ge=1)
@@ -53,8 +71,15 @@ class AnnouncementBase(BaseModel):
                 raise ValueError(f"invalid cron expression: {self.cron_expr}")
         elif self.kind == ScheduleKind.INTERVAL and not self.interval_minutes:
             raise ValueError("interval_minutes is required when kind is 'interval'")
-        elif self.kind == ScheduleKind.ONCE and not self.run_at:
-            raise ValueError("run_at is required when kind is 'once'")
+        elif self.kind == ScheduleKind.ONCE:
+            if not self.run_at:
+                raise ValueError("run_at is required when kind is 'once'")
+            # The scheduler refuses to register a past one-shot, which used to
+            # look like a silent no-op in the UI. Reject it at the edge.
+            from datetime import datetime
+
+            if self.run_at <= datetime.now(UTC):
+                raise ValueError("run_at must be in the future")
         elif self.kind == ScheduleKind.EVENT and not self.event_id:
             raise ValueError("event_id is required when kind is 'event'")
         return self
@@ -124,7 +149,7 @@ class EventOut(ORMModel, EventBase):
 
 class MemberOut(ORMModel):
     id: int
-    discord_id: int
+    discord_id: Snowflake
     discord_name: str | None = None
     game_name: str | None = None
     rank: int | None = None
@@ -146,19 +171,19 @@ class MemberUpdate(BaseModel):
 # ---------------------------------------------------------------------- meta
 
 class ChannelOut(BaseModel):
-    id: int
+    id: Snowflake
     name: str
     category: str | None = None
 
 
 class RoleOut(BaseModel):
-    id: int
+    id: Snowflake
     name: str
     color: str | None = None
 
 
 class MeOut(BaseModel):
-    discord_id: int
+    discord_id: Snowflake
     username: str
     is_admin: bool
 

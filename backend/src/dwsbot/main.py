@@ -81,7 +81,9 @@ async def _run() -> None:
         host=settings.api_host,
         port=settings.api_port,
         log_level=settings.log_level.lower(),
-        access_log=False,
+        # On: a request that fails at the edge otherwise leaves no trace
+        # anywhere, which made a broken channel id very hard to diagnose.
+        access_log=True,
     )
     server = uvicorn.Server(config)
 

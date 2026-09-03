@@ -43,7 +43,9 @@ async def sync_from_guild(session: DbSession, user: AdminUser):
 
     guild = bot.get_guild(get_settings().guild_id)
     if guild is None:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Bot is not in the guild yet")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet"
+        )
 
     existing = set(await session.scalars(select(Member.discord_id)))
     added = 0

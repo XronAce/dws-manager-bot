@@ -28,14 +28,31 @@ const EMPTY = {
   lead_minutes: 0,
 }
 
+/**
+ * A datetime-local input needs "YYYY-MM-DDTHH:mm" in local time, but the API
+ * returns an ISO string with an offset. Without this, editing a one-shot
+ * showed an empty date field and silently cleared it on save.
+ */
+function toLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+         `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function toPayload(form) {
   return {
     ...form,
-    channel_id: Number(form.channel_id),
+    // Left as a string on purpose. A Discord snowflake exceeds
+    // Number.MAX_SAFE_INTEGER, so Number() silently rounds it into a channel
+    // that does not exist. The API accepts and returns these as strings.
+    channel_id: form.channel_id,
     interval_minutes: form.kind === 'interval' ? Number(form.interval_minutes) : null,
     run_at: form.kind === 'once' && form.run_at ? new Date(form.run_at).toISOString() : null,
     cron_expr: form.kind === 'cron' ? form.cron_expr : null,
-    event_id: form.kind === 'event' ? Number(form.event_id) : null,
+    event_id: form.kind === 'event' ? Number(form.event_id) : null,   // DB serial, not a snowflake
     lead_minutes: Number(form.lead_minutes) || 0,
     title: form.title || null,
     mention: form.mention || null,
@@ -106,7 +123,9 @@ export default function Announcements() {
     }
   }
 
-  const channelName = (id) => channels.find((c) => c.id === id)?.name ?? id
+  // Both sides are strings now; === on mixed types would never match.
+  const channelName = (id) =>
+    channels.find((c) => String(c.id) === String(id))?.name ?? id
 
   return (
     <div className="page">
@@ -153,7 +172,17 @@ export default function Announcements() {
             </div>
             {row.last_error && <div className="banner error small">{row.last_error}</div>}
             <div className="card-actions">
-              <button className="btn" onClick={() => setForm({ ...EMPTY, ...row })}>
+              <button
+                className="btn"
+                onClick={() =>
+                  setForm({
+                    ...EMPTY,
+                    ...row,
+                    channel_id: String(row.channel_id),
+                    run_at: toLocalInput(row.run_at),
+                  })
+                }
+              >
                 Edit
               </button>
               <button className="btn" onClick={() => sendTest(row)}>
