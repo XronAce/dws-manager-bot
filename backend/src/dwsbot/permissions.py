@@ -9,12 +9,19 @@ from .config import get_settings
 def member_is_admin(member: discord.Member | None) -> bool:
     """True when the member holds one of the configured admin roles.
 
-    Guild administrators always qualify, so the alliance leader is never locked
-    out by a role rename.
+    The server owner always qualifies, so a role rename can never lock
+    everyone out of the bot.
+
+    Discord's Administrator permission is deliberately *not* honoured as a
+    shortcut. On a typical alliance server it is handed to several roles —
+    helpers, bot integrations, secondary ranks — and treating it as officer
+    rights would let all of them schedule alliance-wide announcements. This
+    matches the rule the backoffice login applies in api/routers/auth.py.
     """
     if member is None:
         return False
-    if member.guild_permissions.administrator:
+    guild = getattr(member, "guild", None)
+    if guild is not None and member.id == guild.owner_id:
         return True
     allowed = {r.casefold() for r in get_settings().admin_roles}
     return any(role.name.casefold() in allowed for role in member.roles)
