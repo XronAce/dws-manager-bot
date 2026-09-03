@@ -15,8 +15,10 @@ COPY alembic.ini ./
 COPY migrations ./migrations
 
 # Never run as root: the container needs no privileges beyond outbound HTTPS.
+# USER must be NUMERIC — with runAsNonRoot, kubelet cannot verify a named
+# user is non-root and refuses to start the container.
 RUN useradd --create-home --uid 10001 dws && chown -R dws:dws /app
-USER dws
+USER 10001
 
 EXPOSE 8000
 

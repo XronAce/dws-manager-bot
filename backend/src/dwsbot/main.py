@@ -56,6 +56,17 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+def _report_setup(task: asyncio.Task) -> None:
+    """Surface a failed scheduler start-up instead of letting it vanish."""
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        log.error("scheduler start-up failed", exc_info=exc)
+    else:
+        log.info("scheduler start-up complete")
+
+
 async def _run() -> None:
     settings = get_settings()
     logging.basicConfig(
@@ -79,11 +90,19 @@ async def _run() -> None:
         scheduler.start()
         await scheduler.reload()
 
-    tasks = [
+    # Only these two staying alive means "the service is up". If either dies,
+    # take the whole process down so the pod restarts cleanly rather than
+    # lingering with a bot but no API (or the reverse).
+    services = [
         asyncio.create_task(bot.start(settings.discord_token), name="discord"),
         asyncio.create_task(server.serve(), name="api"),
-        asyncio.create_task(start_scheduler_when_ready(), name="scheduler"),
     ]
+
+    # Start-up work, NOT a service: it returns as soon as the schedule is
+    # loaded. It must stay out of the wait below, or its ordinary completion
+    # would immediately trigger shutdown.
+    setup = asyncio.create_task(start_scheduler_when_ready(), name="scheduler")
+    setup.add_done_callback(_report_setup)
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -92,19 +111,17 @@ async def _run() -> None:
             loop.add_signal_handler(sig, stop.set)
 
     done, pending = await asyncio.wait(
-        [*tasks, asyncio.create_task(stop.wait(), name="signal")],
+        [*services, asyncio.create_task(stop.wait(), name="signal")],
         return_when=asyncio.FIRST_COMPLETED,
     )
-    # If any half dies, take the whole process down so the pod restarts cleanly
-    # rather than lingering with a bot but no API (or the reverse).
     log.info("shutting down: %s finished first", {t.get_name() for t in done})
 
     scheduler.shutdown()
     server.should_exit = True
     await bot.close()
-    for task in pending:
+    for task in (*pending, setup):
         task.cancel()
-    await asyncio.gather(*pending, return_exceptions=True)
+    await asyncio.gather(*pending, setup, return_exceptions=True)
 
 
 def main() -> None:
