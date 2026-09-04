@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
+import Banner from '../components/Banner.jsx'
+import DateTimeField, { nextRoundedNow, toDateTimeStr } from '../components/DateTimeField.jsx'
 
 const CRON_PRESETS = [
   { label: 'Every day at 09:00', value: '0 9 * * *' },
@@ -10,6 +12,10 @@ const CRON_PRESETS = [
   { label: 'Every 6 hours', value: '0 */6 * * *' },
 ]
 
+function blankForm() {
+  return { ...EMPTY, run_at: toDateTimeStr(nextRoundedNow()) }
+}
+
 const EMPTY = {
   name: '',
   enabled: true,
@@ -17,7 +23,7 @@ const EMPTY = {
   kind: 'cron',
   cron_expr: '0 9 * * *',
   interval_minutes: 60,
-  run_at: '',
+  run_at: '',   // filled by blankForm() with the next 5-minute mark
   timezone: 'Asia/Seoul',
   title: '',
   body: '',
@@ -131,13 +137,13 @@ export default function Announcements() {
     <div className="page">
       <div className="page-head">
         <h2>Scheduled announcements</h2>
-        <button className="btn primary" onClick={() => setForm({ ...EMPTY })}>
+        <button className="btn primary" onClick={() => setForm(blankForm())}>
           New announcement
         </button>
       </div>
 
-      {error && <div className="banner error">{error}</div>}
-      {notice && <div className="banner ok">{notice}</div>}
+      <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
+      <Banner tone="ok" onDismiss={() => setNotice(null)}>{notice}</Banner>
 
       {rows.length === 0 && !form && (
         <p className="muted">Nothing scheduled yet. Create one to get started.</p>
@@ -170,7 +176,7 @@ export default function Announcements() {
                 </span>
               )}
             </div>
-            {row.last_error && <div className="banner error small">{row.last_error}</div>}
+            {row.last_error && <div className="banner error small"><div className="banner-body">{row.last_error}</div></div>}
             <div className="card-actions">
               <button
                 className="btn"
@@ -277,7 +283,14 @@ export default function Announcements() {
             {form.kind === 'once' && (
               <label>
                 Run at
-                <input type="datetime-local" value={form.run_at} onChange={set('run_at')} />
+                <DateTimeField
+                  mode="datetime"
+                  value={form.run_at}
+                  onChange={(v) => setForm((f) => ({ ...f, run_at: v }))}
+                  minToday
+                  placeholder="Pick a date and time…"
+                />
+                <small className="muted">Must be in the future.</small>
               </label>
             )}
 

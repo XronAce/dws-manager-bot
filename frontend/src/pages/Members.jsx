@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
+import Banner from '../components/Banner.jsx'
 
 export default function Members() {
   const [rows, setRows] = useState([])
@@ -43,8 +44,8 @@ export default function Members() {
         <button className="btn primary" onClick={sync}>Import from Discord</button>
       </div>
 
-      {error && <div className="banner error">{error}</div>}
-      {notice && <div className="banner ok">{notice}</div>}
+      <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
+      <Banner tone="ok" onDismiss={() => setNotice(null)}>{notice}</Banner>
 
       <table className="table">
         <thead>

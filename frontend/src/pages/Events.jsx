@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
+import Banner from '../components/Banner.jsx'
+import DateTimeField from '../components/DateTimeField.jsx'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -98,7 +100,7 @@ export default function Events() {
         </button>
       </div>
 
-      {error && <div className="banner error">{error}</div>}
+      <Banner tone="error" onDismiss={() => setError(null)}>{error}</Banner>
       {rows.length === 0 && !form && (
         <p className="muted">
           No events yet. Define recurring game events here, then attach an announcement to one.
@@ -196,7 +198,12 @@ export default function Events() {
                 </label>
                 <label>
                   Counting from
-                  <input type="date" value={(form.reference_date ?? '').slice(0, 10)} onChange={set('reference_date')} />
+                  <DateTimeField
+                    mode="date"
+                    value={(form.reference_date ?? '').slice(0, 10)}
+                    onChange={(v) => setForm((f) => ({ ...f, reference_date: v }))}
+                    placeholder="Pick a known event day…"
+                  />
                   <small className="muted">A day the event is known to run.</small>
                 </label>
               </>
@@ -204,17 +211,33 @@ export default function Events() {
 
             {form.schedule_type === 'fixed' && (
               <label className="wide">
-                Dates (one per line, YYYY-MM-DD)
-                <textarea
-                  rows="3"
-                  value={(form.fixed_dates ?? []).join('\n')}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      fixed_dates: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
-                    }))
-                  }
+                Dates
+                <DateTimeField
+                  mode="multi"
+                  values={form.fixed_dates ?? []}
+                  onChange={(v) => setForm((f) => ({ ...f, fixed_dates: v }))}
+                  placeholder="Pick one or more days…"
                 />
+                {(form.fixed_dates ?? []).length > 0 && (
+                  <div className="row wrap" style={{ marginTop: 6 }}>
+                    {form.fixed_dates.map((d) => (
+                      <button
+                        type="button"
+                        key={d}
+                        className="chip on"
+                        title="Remove"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            fixed_dates: f.fixed_dates.filter((x) => x !== d),
+                          }))
+                        }
+                      >
+                        {d} ×
+                      </button>
+                    ))}
+                  </div>
+                )}
               </label>
             )}
 

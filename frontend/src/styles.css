@@ -179,3 +179,118 @@ small { font-size: 12px; }
   header nav { margin-left: 0; width: 100%; }
   main { padding: 16px; }
 }
+
+/* ---------- dismissible banner ---------- */
+
+.banner { display: flex; align-items: flex-start; gap: 10px; }
+.banner-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.banner-close {
+  flex: none;
+  background: none;
+  border: 0;
+  color: inherit;
+  opacity: 0.65;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.banner-close:hover { opacity: 1; }
+.banner-close:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* ---------- calendar field ---------- */
+
+.dtf { position: relative; }
+
+.dtf-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.dtf-trigger:hover { border-color: var(--muted); }
+.dtf-trigger.open { border-color: var(--accent); }
+.dtf-icon { color: var(--muted); font-size: 11px; }
+
+.dtf-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+}
+
+.dtf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+.dtf-nav {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.dtf-nav:hover { border-color: var(--muted); }
+
+.dtf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.dtf-dow {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dtf-day {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 0;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.dtf-day:hover:not(:disabled) { background: var(--surface-2); }
+.dtf-day:disabled { color: var(--border); cursor: default; }
+/* Today gets an outline; the selection gets the fill, so both can show at once. */
+.dtf-day.today { border-color: var(--muted); }
+.dtf-day.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dtf-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.dtf-foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.dtf-time { flex: 1; gap: 4px; }
+.dtf-time input { padding: 6px 8px; }
