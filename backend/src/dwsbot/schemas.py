@@ -148,6 +148,27 @@ class EventBase(BaseModel):
         return self
 
 
+class OccurrenceOut(BaseModel):
+    """One upcoming occurrence, after moves and skips are applied."""
+
+    starts_at: datetime
+    original_starts_at: datetime
+    moved: bool = False
+    note: str | None = None
+    instance_id: int | None = None
+
+
+class OccurrenceOverrideIn(BaseModel):
+    """Move or skip one date without touching the recurrence rule.
+
+    `starts_at` of None means skip this occurrence entirely.
+    """
+
+    original_starts_at: datetime
+    starts_at: datetime | None = None
+    note: str | None = Field(None, max_length=200)
+
+
 class EventCreate(EventBase):
     pass
 

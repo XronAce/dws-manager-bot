@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
+import { withServerTime } from '../lib/servertime.js'
 import DateTimeField, { nextRoundedNow, toDateTimeStr } from '../components/DateTimeField.jsx'
 
 const CRON_PRESETS = [
@@ -198,9 +199,14 @@ export default function Announcements() {
             <dl className="when">
               <dt>Posts</dt>
               <dd>
-                {row.next_run_at
-                  ? fmtWhen(row.next_run_at)
-                  : <span className="muted">Not scheduled</span>}
+                {row.next_run_at ? (
+                  <>
+                    {fmtWhen(row.next_run_at)}{' '}
+                    <span className="muted">· {withServerTime(row.next_run_at)}</span>
+                  </>
+                ) : (
+                  <span className="muted">Not scheduled</span>
+                )}
               </dd>
 
               {/* Only event-linked rows have a second time. Without it a lone
@@ -209,7 +215,8 @@ export default function Announcements() {
                 <>
                   <dt>Event starts</dt>
                   <dd>
-                    {fmtWhen(row.event_starts_at)}
+                    {fmtWhen(row.event_starts_at)}{' '}
+                    <span className="muted">· {withServerTime(row.event_starts_at)}</span>
                     <span className="muted">
                       {' '}— {row.lead_minutes} min after this posts
                     </span>
@@ -300,7 +307,12 @@ export default function Announcements() {
 
             <label>
               Timezone
-              <input value={form.timezone} onChange={set('timezone')} />
+              <input list="tz-ann" value={form.timezone} onChange={set('timezone')} />
+              <datalist id="tz-ann">
+                <option value="Asia/Seoul">Korea</option>
+                <option value="Etc/GMT+2">Game server time (ST)</option>
+                <option value="UTC">UTC</option>
+              </datalist>
             </label>
 
             {form.kind === 'cron' && (

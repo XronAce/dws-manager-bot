@@ -98,6 +98,16 @@ export const api = {
   deleteEvent: (id) => request(`/events/${id}`, { method: 'DELETE' }),
   previewEvent: (data) => request('/events/preview', { method: 'POST', body: JSON.stringify(data) }),
 
+  listOccurrences: (eventId, count = 8) =>
+    request(`/events/${eventId}/occurrences?count=${count}`),
+  overrideOccurrence: (eventId, data) =>
+    request(`/events/${eventId}/occurrences`, { method: 'PUT', body: JSON.stringify(data) }),
+  clearOccurrence: (eventId, originalStartsAt) =>
+    request(
+      `/events/${eventId}/occurrences?original_starts_at=${encodeURIComponent(originalStartsAt)}`,
+      { method: 'DELETE' },
+    ),
+
   listMembers: (includeInactive = false) =>
     request(`/members?include_inactive=${includeInactive}`),
   updateMember: (id, data) =>

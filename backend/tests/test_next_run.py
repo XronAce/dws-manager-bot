@@ -23,6 +23,21 @@ def no_scheduler_jobs(monkeypatch):
     monkeypatch.setattr(mod, "scheduler", SimpleNamespace(jobs=[]))
 
 
+@pytest.fixture(autouse=True)
+def rule_only_resolver(monkeypatch):
+    """Stub the override lookup: these tests are about the lead arithmetic."""
+    from dwsbot.occurrences import Occurrence
+    from dwsbot.recurrence import next_occurrences
+
+    async def fake(session, defn, *, now=None, count=5, horizon_days=90):
+        return [
+            Occurrence(starts_at=d, original_starts_at=d)
+            for d in next_occurrences(defn, now=now, count=count)
+        ]
+
+    monkeypatch.setattr(mod, "resolve_occurrences", fake)
+
+
 def make_event(**over):
     base = dict(
         enabled=True,
@@ -53,9 +68,9 @@ def make_ann(**over):
     return SimpleNamespace(**base)
 
 
-def test_event_announcement_reports_the_next_occurrence_minus_lead():
+async def test_event_announcement_reports_the_next_occurrence_minus_lead():
     """Regression: this used to read "Not scheduled" until 90 minutes before."""
-    out = mod._with_next_run(make_ann())
+    out = await mod._with_next_run(None, make_ann())
 
     assert out.next_run_at is not None, "a configured event announcement must show a time"
     # Occurrences land at 22:00; a 30 minute lead means 21:30.
@@ -64,37 +79,37 @@ def test_event_announcement_reports_the_next_occurrence_minus_lead():
     assert out.next_run_at > datetime.now(SEOUL)
 
 
-def test_zero_lead_fires_exactly_at_the_occurrence():
-    out = mod._with_next_run(make_ann(lead_minutes=0))
+async def test_zero_lead_fires_exactly_at_the_occurrence():
+    out = await mod._with_next_run(None, make_ann(lead_minutes=0))
     assert out.next_run_at.astimezone(SEOUL).hour == 22
     assert out.next_run_at.astimezone(SEOUL).minute == 0
 
 
-def test_a_longer_lead_moves_it_earlier():
-    at30 = mod._with_next_run(make_ann(lead_minutes=30)).next_run_at
-    at90 = mod._with_next_run(make_ann(lead_minutes=90)).next_run_at
+async def test_a_longer_lead_moves_it_earlier():
+    at30 = (await mod._with_next_run(None, make_ann(lead_minutes=30))).next_run_at
+    at90 = (await mod._with_next_run(None, make_ann(lead_minutes=90))).next_run_at
     assert at90 == at30 - timedelta(minutes=60)
 
 
-def test_disabled_event_reports_nothing():
-    out = mod._with_next_run(make_ann(event=make_event(enabled=False)))
+async def test_disabled_event_reports_nothing():
+    out = await mod._with_next_run(None, make_ann(event=make_event(enabled=False)))
     assert out.next_run_at is None
 
 
-def test_event_with_no_upcoming_occurrence_reports_nothing():
+async def test_event_with_no_upcoming_occurrence_reports_nothing():
     past_only = make_event(schedule_type="fixed", fixed_dates=["2020-01-01"])
-    out = mod._with_next_run(make_ann(event=past_only))
+    out = await mod._with_next_run(None, make_ann(event=past_only))
     assert out.next_run_at is None
 
 
-def test_unlinked_announcement_is_unaffected():
-    out = mod._with_next_run(make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
+async def test_unlinked_announcement_is_unaffected():
+    out = await mod._with_next_run(None, make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
     assert out.next_run_at is None
 
 
-def test_both_times_are_reported_and_differ_by_the_lead():
+async def test_both_times_are_reported_and_differ_by_the_lead():
     """The card shows the post time and the event time; the gap is the lead."""
-    out = mod._with_next_run(make_ann(lead_minutes=30))
+    out = await mod._with_next_run(None, make_ann(lead_minutes=30))
 
     assert out.event_starts_at is not None
     assert out.next_run_at is not None
@@ -104,6 +119,6 @@ def test_both_times_are_reported_and_differ_by_the_lead():
     assert out.next_run_at.astimezone(SEOUL).hour == 21
 
 
-def test_non_event_announcements_have_no_event_time():
-    out = mod._with_next_run(make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
+async def test_non_event_announcements_have_no_event_time():
+    out = await mod._with_next_run(None, make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
     assert out.event_starts_at is None

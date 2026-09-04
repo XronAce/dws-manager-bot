@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
+import Occurrences from '../components/Occurrences.jsx'
+import { withServerTime } from '../lib/servertime.js'
 import DateTimeField from '../components/DateTimeField.jsx'
 
 // Weekday names in the viewer's language; the indices stay 0 = Monday, which
@@ -48,6 +50,7 @@ export default function Events() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState({})
+  const [openDates, setOpenDates] = useState(null)
 
   const refresh = () => api.listEvents().then(setRows).catch((e) => setError(e.message))
   useEffect(() => { refresh() }, [])
@@ -154,12 +157,19 @@ export default function Events() {
             </div>
             {row.upcoming?.length > 0 && (
               <div className="card-meta">
-                Next: {new Date(row.upcoming[0]).toLocaleString()}
+                <span>Next: {new Date(row.upcoming[0]).toLocaleString()}</span>
+                <span className="muted">{withServerTime(row.upcoming[0])}</span>
               </div>
             )}
             <div className="card-actions">
               <button className="btn" onClick={() => { setForm({ ...EMPTY, ...row, weekdays: row.weekdays ?? [] }); setPreview([]) }}>
                 Edit
+              </button>
+              <button
+                className="btn"
+                onClick={() => setOpenDates(openDates === row.id ? null : row.id)}
+              >
+                {openDates === row.id ? 'Hide dates' : 'Manage dates'}
               </button>
               <button
                 className="btn danger"
@@ -169,6 +179,10 @@ export default function Events() {
                 {pending[row.id] ? 'Deleting…' : 'Delete'}
               </button>
             </div>
+
+            {openDates === row.id && (
+              <Occurrences eventId={row.id} onError={setError} />
+            )}
           </div>
         ))}
       </div>
@@ -280,7 +294,13 @@ export default function Events() {
             </label>
             <label>
               Timezone
-              <input value={form.timezone} onChange={set('timezone')} />
+              <input list="tz-options" value={form.timezone} onChange={set('timezone')} />
+              <datalist id="tz-options">
+                <option value="Asia/Seoul">Korea</option>
+                <option value="Etc/GMT+2">Game server time (ST)</option>
+                <option value="UTC">UTC</option>
+              </datalist>
+              <small className="muted">Etc/GMT+2 is server time — 00:00 ST is 11:00 KST.</small>
             </label>
             <label className="inline">
               <input type="checkbox" checked={form.signup_enabled} onChange={set('signup_enabled')} />
@@ -297,7 +317,10 @@ export default function Events() {
               <strong>Next occurrences:</strong>
               <ul>
                 {preview.slice(0, 6).map((iso) => (
-                  <li key={iso}>{new Date(iso).toLocaleString()}</li>
+                  <li key={iso}>
+                    {new Date(iso).toLocaleString()}{' '}
+                    <span className="muted">· {withServerTime(iso)}</span>
+                  </li>
                 ))}
               </ul>
             </div>

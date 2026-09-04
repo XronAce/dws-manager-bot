@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ...models import Announcement, ScheduleKind
-from ...recurrence import next_occurrences
+from ...occurrences import resolve_occurrences
 from ...scheduler import scheduler
 from ...schemas import AnnouncementCreate, AnnouncementOut, AnnouncementUpdate
 from ..deps import AdminUser, DbSession, write_audit
@@ -16,7 +16,7 @@ from ..deps import AdminUser, DbSession, write_audit
 router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
-def _with_next_run(ann: Announcement) -> AnnouncementOut:
+async def _with_next_run(session, ann: Announcement) -> AnnouncementOut:
     """Attach the next fire time, however this announcement is driven."""
     out = AnnouncementOut.model_validate(ann)
 
@@ -39,10 +39,10 @@ def _with_next_run(ann: Announcement) -> AnnouncementOut:
         and ann.event
         and ann.event.enabled
     ):
-        upcoming = next_occurrences(ann.event, count=1)
+        upcoming = await resolve_occurrences(session, ann.event, count=1)
         if upcoming:
-            out.event_starts_at = upcoming[0]
-            out.next_run_at = upcoming[0] - timedelta(minutes=ann.lead_minutes)
+            out.event_starts_at = upcoming[0].starts_at
+            out.next_run_at = upcoming[0].starts_at - timedelta(minutes=ann.lead_minutes)
     return out
 
 
@@ -65,7 +65,7 @@ async def list_announcements(session: DbSession, _: AdminUser):
             select(Announcement).order_by(Announcement.id).options(*_WITH_EVENT)
         )
     ).all()
-    return [_with_next_run(r) for r in rows]
+    return [await _with_next_run(session, r) for r in rows]
 
 
 @router.post("", response_model=AnnouncementOut, status_code=status.HTTP_201_CREATED)
@@ -77,7 +77,7 @@ async def create_announcement(payload: AnnouncementCreate, session: DbSession, u
                       {"name": ann.name})
     await session.commit()
     await scheduler.reload()
-    return _with_next_run(await _reload_one(session, ann.id))
+    return await _with_next_run(session, await _reload_one(session, ann.id))
 
 
 @router.get("/{announcement_id}", response_model=AnnouncementOut)
@@ -85,7 +85,7 @@ async def get_announcement(announcement_id: int, session: DbSession, _: AdminUse
     ann = await _reload_one(session, announcement_id)
     if ann is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
-    return _with_next_run(ann)
+    return await _with_next_run(session, ann)
 
 
 @router.put("/{announcement_id}", response_model=AnnouncementOut)
@@ -101,7 +101,7 @@ async def update_announcement(
                       {"name": ann.name})
     await session.commit()
     await scheduler.reload()
-    return _with_next_run(await _reload_one(session, ann.id))
+    return await _with_next_run(session, await _reload_one(session, ann.id))
 
 
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)

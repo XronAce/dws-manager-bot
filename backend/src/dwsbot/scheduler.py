@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from .db import SessionLocal
 from .models import Announcement, ScheduleKind
-from .recurrence import next_occurrences
+from .occurrences import resolve_occurrences
 
 log = logging.getLogger(__name__)
 
@@ -147,7 +147,12 @@ class AnnouncementScheduler:
         for ann in rows:
             if not ann.event or not ann.event.enabled:
                 continue
-            for occurrence in next_occurrences(ann.event, count=5):
+            # Through resolve_occurrences, so a postponed date is announced at
+            # its new time rather than the one the rule would have produced.
+            async with SessionLocal() as session:
+                upcoming = await resolve_occurrences(session, ann.event, count=5)
+            for occ in upcoming:
+                occurrence = occ.starts_at
                 fire_at = occurrence - timedelta(minutes=ann.lead_minutes)
                 if not (now < fire_at <= horizon):
                     continue

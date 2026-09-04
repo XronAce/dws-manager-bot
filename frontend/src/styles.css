@@ -322,3 +322,59 @@ small { font-size: 12px; }
   .when { grid-template-columns: 1fr; gap: 0 0; }
   .when dt { margin-top: 6px; }
 }
+
+/* ---------- per-date occurrence editor ---------- */
+
+.occ {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.occ-head {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.occ-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.occ-row:last-of-type { border-bottom: 0; }
+/* A rescheduled date earns a marker; the rest stay quiet. */
+.occ-row.moved { border-left: 2px solid var(--accent); padding-left: 10px; margin-left: -12px; }
+
+.occ-when { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; font-size: 14px; }
+.occ-when s { font-size: 13px; }
+.occ-note { font-style: italic; }
+
+.occ-actions { display: flex; gap: 6px; flex: none; }
+
+.occ-edit {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+
+.occ-foot { margin: 10px 0 0; }
+
+.btn.small { padding: 4px 10px; font-size: 13px; }
+
+.tag {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
+.small { font-size: 13px; }

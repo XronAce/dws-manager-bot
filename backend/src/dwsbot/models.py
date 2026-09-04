@@ -179,6 +179,16 @@ class EventInstance(Base, TimestampMixin):
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # The moment the recurrence rule produced, which this row stands in for.
+    # Set on every instance, so a single occurrence can be moved or skipped
+    # without touching the rule and shifting every future date with it.
+    # `starts_at` is the time it actually happens; when the two differ, this
+    # occurrence has been rescheduled.
+    original_starts_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    override_note: Mapped[str | None] = mapped_column(String(200))
+
     # Set once the signup post exists, so the bot can edit it in place.
     channel_id: Mapped[int | None] = mapped_column(BigInteger)
     message_id: Mapped[int | None] = mapped_column(BigInteger)
