@@ -120,8 +120,11 @@ class Announcement(Base, TimestampMixin):
     last_error: Mapped[str | None] = mapped_column(Text)
     fire_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    # Denormalised so a card can show its author without a join or a scan of
-    # the audit log, which is append-only and prunable.
+    # The id is what a byline is really keyed on: names change, ids do not.
+    # The stored name is only a fallback for when the bot is offline or the
+    # person has left the guild.
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
     created_by_name: Mapped[str | None] = mapped_column(String(100))
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
 
@@ -163,8 +166,11 @@ class EventDefinition(Base, TimestampMixin):
 
     signup_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Denormalised so a card can show its author without a join or a scan of
-    # the audit log, which is append-only and prunable.
+    # The id is what a byline is really keyed on: names change, ids do not.
+    # The stored name is only a fallback for when the bot is offline or the
+    # person has left the guild.
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
     created_by_name: Mapped[str | None] = mapped_column(String(100))
     updated_by_name: Mapped[str | None] = mapped_column(String(100))
 

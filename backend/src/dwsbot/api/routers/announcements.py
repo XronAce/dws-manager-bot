@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ...models import Announcement, ScheduleKind
+from ...names import guild_display_name
 from ...occurrences import resolve_occurrences
 from ...scheduler import scheduler
 from ...schemas import AnnouncementCreate, AnnouncementOut, AnnouncementUpdate
@@ -19,6 +20,10 @@ router = APIRouter(prefix="/announcements", tags=["announcements"])
 async def _with_next_run(session, ann: Announcement) -> AnnouncementOut:
     """Attach the next fire time, however this announcement is driven."""
     out = AnnouncementOut.model_validate(ann)
+    # Resolved now, not when the row was written, so a nickname change shows
+    # up on every byline the person ever made.
+    out.created_by_name = guild_display_name(ann.created_by_id, ann.created_by_name)
+    out.updated_by_name = guild_display_name(ann.updated_by_id, ann.updated_by_name)
 
     for job in scheduler.jobs:
         if job.id != f"ann:{ann.id}" and not job.id.startswith(f"ann:{ann.id}:"):
@@ -70,7 +75,11 @@ async def list_announcements(session: DbSession, _: AdminUser):
 
 @router.post("", response_model=AnnouncementOut, status_code=status.HTTP_201_CREATED)
 async def create_announcement(payload: AnnouncementCreate, session: DbSession, user: AdminUser):
-    ann = Announcement(**payload.model_dump(), created_by_name=user.username)
+    ann = Announcement(
+        **payload.model_dump(),
+        created_by_id=user.discord_id,
+        created_by_name=user.username,
+    )
     session.add(ann)
     await session.flush()
     await write_audit(session, user, "announcement.create", "announcement", ann.id,
@@ -97,6 +106,7 @@ async def update_announcement(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
     for field, value in payload.model_dump().items():
         setattr(ann, field, value)
+    ann.updated_by_id = user.discord_id
     ann.updated_by_name = user.username
     await write_audit(session, user, "announcement.update", "announcement", ann.id,
                       {"name": ann.name})

@@ -53,8 +53,10 @@ export default function App() {
     return (
       <div className="centered">
         <div className="login-card">
-          <h1>Path of Unity</h1>
-          <p className="brand-sub muted">alliance manager</p>
+          <h1>
+            <span className="brand-tag">[PoU]</span> Path of Unity
+          </h1>
+          <p className="brand-sub muted">Alliance Manager</p>
           <p className="muted">
             Sign in with the Discord account that holds your officer role.
           </p>
@@ -74,9 +76,10 @@ export default function App() {
       <header>
         <div className="header-top">
           <div className="brand">
-            <span className="mark" aria-hidden="true">PoU</span>
-            {/* Truncates on a narrow phone rather than pushing the row wide. */}
-            <strong>Path of Unity alliance manager</strong>
+            {/* The tag reads as part of the title rather than as a separate
+                badge, and the name truncates on a narrow phone. */}
+            <span className="brand-tag">[PoU]</span>
+            <strong>Path of Unity Alliance Manager</strong>
           </div>
           <div className="user">
             {/* The health strip is the first thing to go when space is tight. */}

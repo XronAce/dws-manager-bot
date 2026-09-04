@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from ...config import get_settings
 from ...models import AppUser
+from ...names import guild_display_name
 from ...schemas import MeOut
 from ...security import (
     authorize_url,
@@ -95,4 +96,10 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
 
 @router.get("/me", response_model=MeOut, summary="Who am I")
 async def me(user: CurrentUser) -> MeOut:
-    return user
+    # The token carries the name minted at login. Resolving it again here means
+    # a nickname change appears on the next page load, not in twelve hours.
+    return MeOut(
+        discord_id=user.discord_id,
+        username=guild_display_name(user.discord_id, user.username) or user.username,
+        is_admin=user.is_admin,
+    )

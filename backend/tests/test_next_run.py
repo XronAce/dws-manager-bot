@@ -62,6 +62,8 @@ def make_ann(**over):
         use_embed=True, embed_color=None, mention=None,
         event_id=1, lead_minutes=30,
         last_fired_at=None, last_error=None, fire_count=0,
+        created_by_id=None, updated_by_id=None,
+        created_by_name=None, updated_by_name=None,
         event=make_event(),
     )
     base.update(over)

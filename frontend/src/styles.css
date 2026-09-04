@@ -105,14 +105,14 @@ header {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.brand .mark {
-  width: 26px; height: 26px; flex: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--accent-text);
-  display: grid; place-items: center;
-  font-weight: 700; font-size: 14px;
+
+.brand-tag {
+  color: var(--accent);
+  font-weight: 700;
+  flex: none;
+  letter-spacing: -0.01em;
 }
+.brand-sub { margin: 2px 0 14px; font-size: 14px; }
 
 .health { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
 
