@@ -14,12 +14,12 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .cron import cron_trigger
 from .db import SessionLocal
 from .models import Announcement, ScheduleKind
 from .occurrences import Occurrence, resolve_occurrences
@@ -109,7 +109,9 @@ class AnnouncementScheduler:
             if not ann.cron_expr:
                 log.warning("announcement %s is CRON but has no expression", ann.id)
                 return False
-            trigger = CronTrigger.from_crontab(ann.cron_expr, timezone=tz)
+            # Not from_crontab: its day-of-week numbering differs from
+            # crontab's, which shifts every weekday by one.
+            trigger = cron_trigger(ann.cron_expr, tz)
         elif ann.kind == ScheduleKind.INTERVAL:
             if not ann.interval_minutes or ann.interval_minutes < 1:
                 log.warning("announcement %s is INTERVAL but has no interval", ann.id)

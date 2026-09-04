@@ -3,16 +3,8 @@ import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import { withServerTime } from '../lib/servertime.js'
 import EmbedPreview from '../components/EmbedPreview.jsx'
+import ScheduleBuilder from '../components/ScheduleBuilder.jsx'
 import DateTimeField, { nextRoundedNow, toDateTimeStr } from '../components/DateTimeField.jsx'
-
-const CRON_PRESETS = [
-  { label: 'Every day at 09:00', value: '0 9 * * *' },
-  { label: 'Every day at 20:00', value: '0 20 * * *' },
-  { label: 'Weekdays at 09:00', value: '0 9 * * 1-5' },
-  { label: 'Mondays at 19:00', value: '0 19 * * 1' },
-  { label: 'Saturdays at 20:00', value: '0 20 * * 6' },
-  { label: 'Every 6 hours', value: '0 */6 * * *' },
-]
 
 function blankForm() {
   return { ...EMPTY, run_at: toDateTimeStr(nextRoundedNow()) }
@@ -317,99 +309,7 @@ export default function Announcements() {
               )}
             </label>
 
-            <label>
-              Schedule type
-              <select value={form.kind} onChange={set('kind')}>
-                <option value="cron">Recurring (cron)</option>
-                <option value="interval">Every N minutes</option>
-                <option value="once">One time</option>
-                <option value="event">Before an event</option>
-              </select>
-            </label>
-
-            <label>
-              Timezone
-              <input list="tz-ann" value={form.timezone} onChange={set('timezone')} />
-              <datalist id="tz-ann">
-                <option value="Asia/Seoul">Korea</option>
-                <option value="Etc/GMT+2">Game server time (ST)</option>
-                <option value="UTC">UTC</option>
-              </datalist>
-            </label>
-
-            {form.kind === 'cron' && (
-              <label className="wide">
-                Cron expression
-                <div className="row">
-                  <input value={form.cron_expr} onChange={set('cron_expr')} required />
-                  <select
-                    value=""
-                    onChange={(e) =>
-                      e.target.value && setForm((f) => ({ ...f, cron_expr: e.target.value }))
-                    }
-                  >
-                    <option value="">Presets…</option>
-                    {CRON_PRESETS.map((p) => (
-                      <option key={p.value} value={p.value}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <small className="muted">minute hour day-of-month month day-of-week</small>
-              </label>
-            )}
-
-            {form.kind === 'interval' && (
-              <label>
-                Every (minutes)
-                <input
-                  type="number"
-                  min="1"
-                  value={form.interval_minutes}
-                  onChange={set('interval_minutes')}
-                />
-              </label>
-            )}
-
-            {form.kind === 'once' && (
-              <label>
-                Run at
-                <DateTimeField
-                  mode="datetime"
-                  value={form.run_at}
-                  onChange={(v) => setForm((f) => ({ ...f, run_at: v }))}
-                  minToday
-                  placeholder="Pick a date and time…"
-                />
-                <small className="muted">Must be in the future.</small>
-              </label>
-            )}
-
-            {form.kind === 'event' && (
-              <>
-                <label>
-                  Event
-                  <select value={form.event_id ?? ''} onChange={set('event_id')} required>
-                    <option value="">Select an event…</option>
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Minutes before start
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.lead_minutes}
-                    onChange={set('lead_minutes')}
-                  />
-                </label>
-              </>
-            )}
+            <ScheduleBuilder form={form} setForm={setForm} events={events} />
 
             <label>
               Title

@@ -108,6 +108,9 @@ export const api = {
       { method: 'DELETE' },
     ),
 
+  previewSchedule: (data) =>
+    request('/announcements/preview-schedule', { method: 'POST', body: JSON.stringify(data) }),
+
   listHistory: (entity) =>
     request(`/history${entity ? `?entity=${entity}` : ''}`),
 

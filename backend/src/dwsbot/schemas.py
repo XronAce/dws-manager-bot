@@ -150,6 +150,22 @@ class EventBase(BaseModel):
         return self
 
 
+class SchedulePreviewIn(BaseModel):
+    """Just the scheduling half of an announcement, for the 'when' preview."""
+
+    kind: ScheduleKind = ScheduleKind.CRON
+    cron_expr: str | None = None
+    interval_minutes: int | None = Field(None, ge=1)
+    run_at: datetime | None = None
+    timezone: str = "Asia/Seoul"
+
+
+class SchedulePreviewOut(BaseModel):
+    description: str
+    next_runs: list[datetime] = []
+    error: str | None = None
+
+
 class OccurrenceOut(BaseModel):
     """One upcoming occurrence, after moves and skips are applied."""
 

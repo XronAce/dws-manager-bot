@@ -542,3 +542,26 @@ a { color: var(--accent); text-underline-offset: 2px; }
   border-left: 4px solid #4e5058; margin: 8px 0 0; padding: 2px 0 2px 10px; color: #b5bac1;
 }
 .dc-note { margin: 10px 0 0; }
+
+/* ---------- schedule builder ---------- */
+
+.sched { display: grid; gap: 10px; }
+.sched-modes { gap: 6px; }
+.sched-body { display: grid; gap: 12px; }
+.sched-time { max-width: 160px; }
+
+/* The answer to "when will this actually post", which is the whole point of
+   the builder — a cron expression cannot be checked by reading it. */
+.sched-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  min-width: 0;
+}
+.sched-preview.bad { border-left-color: var(--bad); color: #fecaca; }
+.sched-preview strong { color: var(--accent); font-weight: 600; }
+.sched-preview ul { margin: 6px 0 0; padding-left: 18px; }
+.sched-preview li { margin: 2px 0; font-variant-numeric: tabular-nums; }

@@ -1,17 +1,24 @@
 """Backoffice CRUD for scheduled announcements."""
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from ...cron import cron_trigger, describe
 from ...models import Announcement, ScheduleKind
 from ...names import guild_display_name
 from ...occurrences import resolve_occurrences
 from ...scheduler import scheduler
-from ...schemas import AnnouncementCreate, AnnouncementOut, AnnouncementUpdate
+from ...schemas import (
+    AnnouncementCreate,
+    AnnouncementOut,
+    AnnouncementUpdate,
+    SchedulePreviewIn,
+    SchedulePreviewOut,
+)
 from ..deps import AdminUser, DbSession, write_audit
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
@@ -166,3 +173,57 @@ async def test_announcement(announcement_id: int, session: DbSession, user: Admi
     await write_audit(session, user, "announcement.test", "announcement", ann.id, None)
     await session.commit()
     return {"sent": True, "name": ann.name}
+
+
+@router.post("/preview-schedule", response_model=SchedulePreviewOut)
+async def preview_schedule(payload: SchedulePreviewIn, _: AdminUser):
+    """When would this schedule actually fire?
+
+    Computed with the same trigger the scheduler uses, so the answer cannot
+    drift from the behaviour. Errors are returned rather than raised: the UI
+    calls this on every keystroke, and a half-typed expression is normal.
+    """
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    try:
+        tz = ZoneInfo(payload.timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        return SchedulePreviewOut(description="", error=f"Unknown timezone: {payload.timezone}")
+
+    now = datetime.now(tz)
+    runs: list[datetime] = []
+
+    if payload.kind == ScheduleKind.CRON:
+        if not payload.cron_expr:
+            return SchedulePreviewOut(description="", error="No schedule set yet")
+        try:
+            trigger = cron_trigger(payload.cron_expr, tz)
+        except Exception as exc:
+            return SchedulePreviewOut(description="", error=f"Not a valid schedule: {exc}")
+        when = now
+        for _i in range(5):
+            # previous_fire_time, not just now: passing the last result back as
+            # `now` returns that same instant forever.
+            when = trigger.get_next_fire_time(runs[-1] if runs else None, when)
+            if when is None:
+                break
+            runs.append(when)
+        return SchedulePreviewOut(description=describe(payload.cron_expr), next_runs=runs)
+
+    if payload.kind == ScheduleKind.INTERVAL:
+        if not payload.interval_minutes:
+            return SchedulePreviewOut(description="", error="No interval set yet")
+        every = payload.interval_minutes
+        runs = [now + timedelta(minutes=every * (i + 1)) for i in range(5)]
+        unit = "minute" if every == 1 else "minutes"
+        return SchedulePreviewOut(description=f"Every {every} {unit}", next_runs=runs)
+
+    if payload.kind == ScheduleKind.ONCE:
+        if not payload.run_at:
+            return SchedulePreviewOut(description="", error="No date set yet")
+        if payload.run_at <= now:
+            return SchedulePreviewOut(description="Once", error="That moment has already passed")
+        return SchedulePreviewOut(description="Once", next_runs=[payload.run_at])
+
+    return SchedulePreviewOut(description="Follows the linked event")
