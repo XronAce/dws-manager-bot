@@ -41,6 +41,8 @@ export default function Events() {
   const [form, setForm] = useState(null)
   const [preview, setPreview] = useState([])
   const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState({})
 
   const refresh = () => api.listEvents().then(setRows).catch((e) => setError(e.message))
   useEffect(() => { refresh() }, [])
@@ -73,22 +75,42 @@ export default function Events() {
   async function save(e) {
     e.preventDefault()
     setError(null)
+    setBusy(true)
     try {
       const payload = toPayload(form)
-      if (form.id) await api.updateEvent(form.id, payload)
-      else await api.createEvent(payload)
+      // The endpoints return the saved row; re-listing would be another
+      // round trip for data already in hand.
+      if (form.id) {
+        const saved = await api.updateEvent(form.id, payload)
+        setRows((rs) => rs.map((r) => (r.id === saved.id ? saved : r)))
+      } else {
+        const saved = await api.createEvent(payload)
+        setRows((rs) => [...rs, saved])
+      }
       setForm(null)
       setPreview([])
-      await refresh()
     } catch (err) {
       setError(err.message)
+    } finally {
+      setBusy(false)
     }
   }
 
   async function remove(row) {
     if (!confirm(`Delete event "${row.name}"?`)) return
-    await api.deleteEvent(row.id).catch((err) => setError(err.message))
-    await refresh()
+    setError(null)
+    setPending((p) => ({ ...p, [row.id]: true }))
+    try {
+      await api.deleteEvent(row.id)
+      setRows((rs) => rs.filter((r) => r.id !== row.id))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPending((p) => {
+        const { [row.id]: _drop, ...rest } = p
+        return rest
+      })
+    }
   }
 
   return (
@@ -134,7 +156,13 @@ export default function Events() {
               <button className="btn" onClick={() => { setForm({ ...EMPTY, ...row, weekdays: row.weekdays ?? [] }); setPreview([]) }}>
                 Edit
               </button>
-              <button className="btn danger" onClick={() => remove(row)}>Delete</button>
+              <button
+                className="btn danger"
+                onClick={() => remove(row)}
+                disabled={Boolean(pending[row.id])}
+              >
+                {pending[row.id] ? 'Deleting…' : 'Delete'}
+              </button>
             </div>
           </div>
         ))}
@@ -271,7 +299,9 @@ export default function Events() {
           )}
 
           <div className="card-actions">
-            <button className="btn primary" type="submit">Save</button>
+            <button className="btn primary" type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
             <button className="btn" type="button" onClick={runPreview}>Preview schedule</button>
             <button className="btn" type="button" onClick={() => { setForm(null); setPreview([]) }}>
               Cancel

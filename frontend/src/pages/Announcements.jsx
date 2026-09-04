@@ -73,6 +73,8 @@ export default function Announcements() {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
   const [busy, setBusy] = useState(false)
+  // Per-row in-flight state, so a slow link still gives immediate feedback.
+  const [pending, setPending] = useState({})
 
   const refresh = () =>
     api
@@ -97,10 +99,16 @@ export default function Announcements() {
     setError(null)
     try {
       const payload = toPayload(form)
-      if (form.id) await api.updateAnnouncement(form.id, payload)
-      else await api.createAnnouncement(payload)
+      // Both endpoints return the saved row, so re-listing the collection
+      // would be a second round trip for data we already hold.
+      if (form.id) {
+        const saved = await api.updateAnnouncement(form.id, payload)
+        setRows((rs) => rs.map((r) => (r.id === saved.id ? saved : r)))
+      } else {
+        const saved = await api.createAnnouncement(payload)
+        setRows((rs) => [...rs, saved])
+      }
       setForm(null)
-      await refresh()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -111,21 +119,34 @@ export default function Announcements() {
   async function sendTest(row) {
     setError(null)
     setNotice(null)
+    setPending((p) => ({ ...p, [row.id]: 'sending' }))
     try {
       await api.testAnnouncement(row.id)
       setNotice(`Sent "${row.name}" to Discord.`)
     } catch (err) {
       setError(err.message)
+    } finally {
+      setPending((p) => {
+        const { [row.id]: _drop, ...rest } = p
+        return rest
+      })
     }
   }
 
   async function remove(row) {
     if (!confirm(`Delete "${row.name}"? This cannot be undone.`)) return
+    setError(null)
+    setPending((p) => ({ ...p, [row.id]: 'deleting' }))
     try {
       await api.deleteAnnouncement(row.id)
-      await refresh()
+      setRows((rs) => rs.filter((r) => r.id !== row.id))
     } catch (err) {
       setError(err.message)
+    } finally {
+      setPending((p) => {
+        const { [row.id]: _drop, ...rest } = p
+        return rest
+      })
     }
   }
 
@@ -191,11 +212,19 @@ export default function Announcements() {
               >
                 Edit
               </button>
-              <button className="btn" onClick={() => sendTest(row)}>
-                Send test
+              <button
+                className="btn"
+                onClick={() => sendTest(row)}
+                disabled={Boolean(pending[row.id])}
+              >
+                {pending[row.id] === 'sending' ? 'Sending…' : 'Send test'}
               </button>
-              <button className="btn danger" onClick={() => remove(row)}>
-                Delete
+              <button
+                className="btn danger"
+                onClick={() => remove(row)}
+                disabled={Boolean(pending[row.id])}
+              >
+                {pending[row.id] === 'deleting' ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
