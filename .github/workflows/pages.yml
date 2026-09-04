@@ -21,6 +21,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A hung install should fail in minutes, not sit for six hours.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +32,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - run: npm ci
+      # --no-audit is not cosmetic: the audit call goes to a separate endpoint
+      # and has hung this job twice, stalling the whole deploy.
+      - run: npm ci --no-audit --no-fund
         working-directory: frontend
 
       - run: npm run build
