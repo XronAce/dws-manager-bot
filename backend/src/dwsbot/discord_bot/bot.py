@@ -95,7 +95,6 @@ class AllianceBot(commands.Bot):
         )
         if moved:
             embed.add_field(name="⏰ Rescheduled", value="\n".join(moved), inline=False)
-        embed.set_footer(text="DWS Alliance Manager")
         # The mention must sit in `content`; mentions inside an embed do not ping.
         return (prefix or None), embed
 
