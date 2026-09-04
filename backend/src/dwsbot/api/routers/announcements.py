@@ -41,6 +41,7 @@ def _with_next_run(ann: Announcement) -> AnnouncementOut:
     ):
         upcoming = next_occurrences(ann.event, count=1)
         if upcoming:
+            out.event_starts_at = upcoming[0]
             out.next_run_at = upcoming[0] - timedelta(minutes=ann.lead_minutes)
     return out
 

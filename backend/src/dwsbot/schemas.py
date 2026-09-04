@@ -104,7 +104,13 @@ class AnnouncementOut(ORMModel, AnnouncementBase):
     last_fired_at: datetime | None = None
     last_error: str | None = None
     fire_count: int = 0
-    next_run_at: datetime | None = None   # filled from the live scheduler
+    # When the bot will post. Filled from the live scheduler, or derived from
+    # the linked event for kind="event".
+    next_run_at: datetime | None = None
+    # For kind="event" only: when the event itself begins. next_run_at is this
+    # minus lead_minutes, and showing both is what makes the offset legible —
+    # a lone "21:30" reads as the event's own start time.
+    event_starts_at: datetime | None = None
 
 
 # -------------------------------------------------------------------- events

@@ -48,6 +48,16 @@ function toLocalInput(iso) {
          `T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Compact, locale-aware: "Sat 5 Sep, 21:30" — no seconds, no ambiguity. */
+const fmtWhen = (iso) =>
+  new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
+
 function toPayload(form) {
   return {
     ...form,
@@ -185,18 +195,37 @@ export default function Announcements() {
               <span className="muted">{row.timezone}</span>
             </div>
             <p className="card-body">{row.body.slice(0, 160)}</p>
-            <div className="card-meta">
-              {row.next_run_at ? (
-                <span>Next: {new Date(row.next_run_at).toLocaleString()}</span>
-              ) : (
-                <span className="muted">Not scheduled</span>
+            <dl className="when">
+              <dt>Posts</dt>
+              <dd>
+                {row.next_run_at
+                  ? fmtWhen(row.next_run_at)
+                  : <span className="muted">Not scheduled</span>}
+              </dd>
+
+              {/* Only event-linked rows have a second time. Without it a lone
+                  "21:30" reads as the event's own start, which is 22:00. */}
+              {row.event_starts_at && (
+                <>
+                  <dt>Event starts</dt>
+                  <dd>
+                    {fmtWhen(row.event_starts_at)}
+                    <span className="muted">
+                      {' '}— {row.lead_minutes} min after this posts
+                    </span>
+                  </dd>
+                </>
               )}
+
               {row.last_fired_at && (
-                <span className="muted">
-                  Last: {new Date(row.last_fired_at).toLocaleString()} ({row.fire_count}×)
-                </span>
+                <>
+                  <dt>Last sent</dt>
+                  <dd className="muted">
+                    {fmtWhen(row.last_fired_at)} ({row.fire_count}×)
+                  </dd>
+                </>
               )}
-            </div>
+            </dl>
             {row.last_error && <div className="banner error small"><div className="banner-body">{row.last_error}</div></div>}
             <div className="card-actions">
               <button

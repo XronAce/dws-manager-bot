@@ -90,3 +90,20 @@ def test_event_with_no_upcoming_occurrence_reports_nothing():
 def test_unlinked_announcement_is_unaffected():
     out = mod._with_next_run(make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
     assert out.next_run_at is None
+
+
+def test_both_times_are_reported_and_differ_by_the_lead():
+    """The card shows the post time and the event time; the gap is the lead."""
+    out = mod._with_next_run(make_ann(lead_minutes=30))
+
+    assert out.event_starts_at is not None
+    assert out.next_run_at is not None
+    assert out.event_starts_at - out.next_run_at == timedelta(minutes=30)
+    # The event is at 22:00; the post goes out at 21:30.
+    assert out.event_starts_at.astimezone(SEOUL).hour == 22
+    assert out.next_run_at.astimezone(SEOUL).hour == 21
+
+
+def test_non_event_announcements_have_no_event_time():
+    out = mod._with_next_run(make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
+    assert out.event_starts_at is None
