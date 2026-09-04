@@ -61,6 +61,16 @@ class AnnouncementBase(BaseModel):
             raise ValueError(f"unknown timezone: {v}") from exc
         return v
 
+
+class AnnouncementCreate(AnnouncementBase):
+    """Incoming payload. All the business rules live here, not on the base.
+
+    They must not sit on AnnouncementBase, because AnnouncementOut inherits it:
+    a rule like "run_at must be in the future" is true of new input but false
+    of a row stored last week, and enforcing it on the way out turns every
+    read of that row into a 500.
+    """
+
     @model_validator(mode="after")
     def _schedule_is_complete(self):
         """Reject a schedule the scheduler would silently refuse to register."""
@@ -74,10 +84,8 @@ class AnnouncementBase(BaseModel):
         elif self.kind == ScheduleKind.ONCE:
             if not self.run_at:
                 raise ValueError("run_at is required when kind is 'once'")
-            # The scheduler refuses to register a past one-shot, which used to
-            # look like a silent no-op in the UI. Reject it at the edge.
-            from datetime import datetime
-
+            # The scheduler will not register a one-shot whose moment has
+            # passed, which looked like a silent no-op in the UI.
             if self.run_at <= datetime.now(UTC):
                 raise ValueError("run_at must be in the future")
         elif self.kind == ScheduleKind.EVENT and not self.event_id:
@@ -85,15 +93,13 @@ class AnnouncementBase(BaseModel):
         return self
 
 
-class AnnouncementCreate(AnnouncementBase):
-    pass
-
-
-class AnnouncementUpdate(AnnouncementBase):
+class AnnouncementUpdate(AnnouncementCreate):
     pass
 
 
 class AnnouncementOut(ORMModel, AnnouncementBase):
+    """Outgoing representation: field shapes only, no business rules."""
+
     id: int
     last_fired_at: datetime | None = None
     last_error: str | None = None
@@ -141,6 +147,9 @@ class EventCreate(EventBase):
 
 
 class EventOut(ORMModel, EventBase):
+    # EventBase's structural rules are safe to inherit here: they describe the
+    # shape of a definition rather than a moment in time, so a stored row that
+    # satisfied them at write time still satisfies them at read time.
     id: int
     upcoming: list[datetime] = []
 
@@ -186,6 +195,26 @@ class MeOut(BaseModel):
     discord_id: Snowflake
     username: str
     is_admin: bool
+
+
+class MercIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    bgb: int = Field(default=0, ge=0)
+
+
+class LineupIn(BaseModel):
+    order: list[str] = Field(default_factory=list)
+    mercs: list[MercIn] = Field(default_factory=list)
+    opts: dict = Field(default_factory=dict)
+
+
+class LineupOut(ORMModel):
+    slug: str
+    order: list[str]
+    mercs: list[MercIn]
+    opts: dict
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
 
 
 class HealthOut(BaseModel):

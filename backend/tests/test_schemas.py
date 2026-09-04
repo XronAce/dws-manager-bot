@@ -139,3 +139,51 @@ def test_one_shot_in_the_future_is_accepted():
     when = datetime.now(UTC) + timedelta(hours=1)
     ann = AnnouncementCreate(**BASE, kind=ScheduleKind.ONCE, run_at=when)
     assert ann.run_at == when
+
+
+# ------------------------------------ output models must never reject storage
+
+def test_reading_back_a_past_one_shot_does_not_raise():
+    """A row stored last week must stay readable forever.
+
+    Regression: the "run_at must be in the future" rule was declared on
+    AnnouncementBase, which AnnouncementOut inherits. Listing announcements
+    then raised ValidationError on the way *out*, returning 500 for the whole
+    collection because one old row existed.
+    """
+    from datetime import datetime, timedelta
+
+    from dwsbot.schemas import AnnouncementOut
+
+    out = AnnouncementOut(
+        id=1, name="Test announcement", channel_id=REAL_CHANNEL_ID,
+        kind=ScheduleKind.ONCE,
+        run_at=datetime.now(UTC) - timedelta(days=240),
+        body="x",
+    )
+    assert out.id == 1
+    assert out.model_dump(mode="json")["channel_id"] == str(REAL_CHANNEL_ID)
+
+
+def test_output_model_tolerates_a_structurally_incomplete_row():
+    """Even a cron row with no expression must be listable, not fatal."""
+    from dwsbot.schemas import AnnouncementOut
+
+    out = AnnouncementOut(
+        id=2, name="broken", channel_id=REAL_CHANNEL_ID,
+        kind=ScheduleKind.CRON, cron_expr=None, body="x",
+    )
+    assert out.cron_expr is None
+
+
+def test_update_still_enforces_the_future_rule():
+    """Tightening output must not loosen input."""
+    from datetime import datetime, timedelta
+
+    from dwsbot.schemas import AnnouncementUpdate
+
+    with pytest.raises(ValidationError, match="run_at must be in the future"):
+        AnnouncementUpdate(
+            **BASE, kind=ScheduleKind.ONCE,
+            run_at=datetime.now(UTC) - timedelta(hours=1),
+        )
