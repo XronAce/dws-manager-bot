@@ -108,9 +108,7 @@ export const api = {
       { method: 'DELETE' },
     ),
 
-  listMembers: (includeInactive = false) =>
-    request(`/members?include_inactive=${includeInactive}`),
-  updateMember: (id, data) =>
-    request(`/members/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  syncMembers: () => request('/members/sync', { method: 'POST' }),
+  listHistory: (entity) =>
+    request(`/history${entity ? `?entity=${entity}` : ''}`),
+
 }

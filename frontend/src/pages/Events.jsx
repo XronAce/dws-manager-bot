@@ -168,6 +168,15 @@ export default function Events() {
                 <span className="muted">{withServerTime(row.upcoming[0])}</span>
               </div>
             )}
+            {(row.created_by_name || row.updated_by_name) && (
+              <div className="byline muted">
+                {row.created_by_name && <>Added by <b>{row.created_by_name}</b></>}
+                {row.updated_by_name && row.updated_by_name !== row.created_by_name && (
+                  <> · last edited by <b>{row.updated_by_name}</b></>
+                )}
+              </div>
+            )}
+
             <div className="card-actions">
               <button className="btn" onClick={() => { setForm({ ...EMPTY, ...row, weekdays: row.weekdays ?? [] }); setPreview([]) }}>
                 Edit

@@ -104,6 +104,8 @@ class AnnouncementOut(ORMModel, AnnouncementBase):
     last_fired_at: datetime | None = None
     last_error: str | None = None
     fire_count: int = 0
+    created_by_name: str | None = None
+    updated_by_name: str | None = None
     # When the bot will post. Filled from the live scheduler, or derived from
     # the linked event for kind="event".
     next_run_at: datetime | None = None
@@ -173,12 +175,26 @@ class EventCreate(EventBase):
     pass
 
 
+class AuditOut(BaseModel):
+    """One line of the change history."""
+
+    id: int
+    at: datetime
+    actor_name: str | None = None
+    action: str
+    entity: str | None = None
+    entity_id: str | None = None
+    detail: dict | None = None
+
+
 class EventOut(ORMModel, EventBase):
     # EventBase's structural rules are safe to inherit here: they describe the
     # shape of a definition rather than a moment in time, so a stored row that
     # satisfied them at write time still satisfies them at read time.
     id: int
     upcoming: list[datetime] = []
+    created_by_name: str | None = None
+    updated_by_name: str | None = None
 
 
 # ------------------------------------------------------------------- members

@@ -120,6 +120,12 @@ class Announcement(Base, TimestampMixin):
     last_error: Mapped[str | None] = mapped_column(Text)
     fire_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Denormalised so a card can show its author without a join or a scan of
+    # the audit log, which is append-only and prunable.
+    created_by_name: Mapped[str | None] = mapped_column(String(100))
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
     event: Mapped[EventDefinition | None] = relationship(back_populates="announcements")
 
     __table_args__ = (Index("ix_announcements_enabled_kind", "enabled", "kind"),)
@@ -156,6 +162,12 @@ class EventDefinition(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Seoul", nullable=False)
 
     signup_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Denormalised so a card can show its author without a join or a scan of
+    # the audit log, which is append-only and prunable.
+    created_by_name: Mapped[str | None] = mapped_column(String(100))
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
 
     announcements: Mapped[list[Announcement]] = relationship(back_populates="event")
     instances: Mapped[list[EventInstance]] = relationship(

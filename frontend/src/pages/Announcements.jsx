@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import { withServerTime } from '../lib/servertime.js'
+import EmbedPreview from '../components/EmbedPreview.jsx'
 import DateTimeField, { nextRoundedNow, toDateTimeStr } from '../components/DateTimeField.jsx'
 
 const CRON_PRESETS = [
@@ -86,6 +87,8 @@ export default function Announcements() {
   const [busy, setBusy] = useState(false)
   // Per-row in-flight state, so a slow link still gives immediate feedback.
   const [pending, setPending] = useState({})
+  // Which card's Discord preview is open, by id, or 'form' for the editor.
+  const [preview, setPreview] = useState(null)
 
   const refresh = () =>
     api
@@ -196,6 +199,15 @@ export default function Announcements() {
               <span className="muted">{row.timezone}</span>
             </div>
             <p className="card-body">{row.body.slice(0, 160)}</p>
+            {(row.created_by_name || row.updated_by_name) && (
+              <div className="byline muted">
+                {row.created_by_name && <>Added by <b>{row.created_by_name}</b></>}
+                {row.updated_by_name && row.updated_by_name !== row.created_by_name && (
+                  <> · last edited by <b>{row.updated_by_name}</b></>
+                )}
+              </div>
+            )}
+
             <dl className="when">
               <dt>Posts</dt>
               <dd>
@@ -234,6 +246,10 @@ export default function Announcements() {
               )}
             </dl>
             {row.last_error && <div className="banner error small"><div className="banner-body">{row.last_error}</div></div>}
+
+            {preview === row.id && (
+              <EmbedPreview announcement={row} />
+            )}
             <div className="card-actions">
               <button
                 className="btn"
@@ -247,6 +263,12 @@ export default function Announcements() {
                 }
               >
                 Edit
+              </button>
+              <button
+                className="btn"
+                onClick={() => setPreview(preview === row.id ? null : row.id)}
+              >
+                {preview === row.id ? 'Hide preview' : 'Preview'}
               </button>
               <button
                 className="btn"
@@ -427,9 +449,23 @@ export default function Announcements() {
             </label>
           </div>
 
+          {preview === 'form' && (
+            <>
+              <div className="preview-label muted small">How it will look in Discord</div>
+              <EmbedPreview announcement={form} />
+            </>
+          )}
+
           <div className="card-actions">
             <button className="btn primary" type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => setPreview(preview === 'form' ? null : 'form')}
+            >
+              {preview === 'form' ? 'Hide preview' : 'Preview'}
             </button>
             <button className="btn" type="button" onClick={() => setForm(null)}>
               Cancel

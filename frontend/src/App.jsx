@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/api.js'
 import Announcements from './pages/Announcements.jsx'
 import Events from './pages/Events.jsx'
-import Members from './pages/Members.jsx'
+import History from './pages/History.jsx'
 
 const TABS = [
   { id: 'announcements', label: 'Announcements', Component: Announcements },
   { id: 'events', label: 'Events', Component: Events },
-  { id: 'members', label: 'Roster', Component: Members },
+  { id: 'history', label: 'History', Component: History },
 ]
 
 export default function App() {
@@ -53,7 +53,8 @@ export default function App() {
     return (
       <div className="centered">
         <div className="login-card">
-          <h1>Alliance Manager</h1>
+          <h1>Path of Unity</h1>
+          <p className="brand-sub muted">alliance manager</p>
           <p className="muted">
             Sign in with the Discord account that holds your officer role.
           </p>
@@ -73,8 +74,9 @@ export default function App() {
       <header>
         <div className="header-top">
           <div className="brand">
-            <span className="mark" aria-hidden="true">P</span>
-            <strong>Alliance Manager</strong>
+            <span className="mark" aria-hidden="true">PoU</span>
+            {/* Truncates on a narrow phone rather than pushing the row wide. */}
+            <strong>Path of Unity alliance manager</strong>
           </div>
           <div className="user">
             {/* The health strip is the first thing to go when space is tight. */}

@@ -70,7 +70,7 @@ async def list_announcements(session: DbSession, _: AdminUser):
 
 @router.post("", response_model=AnnouncementOut, status_code=status.HTTP_201_CREATED)
 async def create_announcement(payload: AnnouncementCreate, session: DbSession, user: AdminUser):
-    ann = Announcement(**payload.model_dump())
+    ann = Announcement(**payload.model_dump(), created_by_name=user.username)
     session.add(ann)
     await session.flush()
     await write_audit(session, user, "announcement.create", "announcement", ann.id,
@@ -97,6 +97,7 @@ async def update_announcement(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
     for field, value in payload.model_dump().items():
         setattr(ann, field, value)
+    ann.updated_by_name = user.username
     await write_audit(session, user, "announcement.update", "announcement", ann.id,
                       {"name": ann.name})
     await session.commit()

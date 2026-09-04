@@ -14,7 +14,6 @@ from ..occurrences import Occurrence
 log = logging.getLogger(__name__)
 
 COGS = (
-    "dwsbot.discord_bot.cogs.roster",
     "dwsbot.discord_bot.cogs.events",
     "dwsbot.discord_bot.cogs.admin",
 )

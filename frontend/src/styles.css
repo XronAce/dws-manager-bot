@@ -349,27 +349,6 @@ small { font-size: 12px; }
 .banner-close:hover { opacity: 1; }
 .banner-close:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 
-/* ---------- roster: table on desktop, cards on a phone ---------- */
-
-.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.table { width: 100%; border-collapse: collapse; }
-.table th {
-  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--muted); padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
-}
-.table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-.table input { padding: 7px 9px; min-height: 40px; }
-
-.roster-cards { display: grid; gap: 10px; }
-.roster-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 13px 14px;
-}
-.roster-card .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.roster-card .name { font-weight: 600; }
-.roster-card .facts { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 5px; }
-.roster-card .facts b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
-
 /* ---------- calendar ---------- */
 
 .dtf { position: relative; }
@@ -467,16 +446,99 @@ a { color: var(--accent); text-underline-offset: 2px; }
   nav.tabs { padding: 0 20px 8px; }
 }
 
-/* Roster card: power is the number people scan for, the handle is context. */
-.roster-card .facts {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 6px;
+
+/* ---------- byline ---------- */
+
+.byline { font-size: 12.5px; margin-top: 8px; }
+.byline b { color: var(--text); font-weight: 500; }
+
+/* ---------- history ---------- */
+
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.history-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
-.roster-card .power {
-  font-size: 15px; font-weight: 600;
-  font-variant-numeric: tabular-nums;
+.history-row:last-child { border-bottom: 0; }
+.hbody { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.hdetail { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.hwhen { font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.hkind {
+  flex: none;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  min-width: 44px;
+  text-align: center;
 }
-.roster-card .handle {
-  font-size: 12.5px; margin-top: 4px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.hkind.add  { color: var(--ok);  border-color: rgba(74, 222, 128, 0.4); }
+.hkind.del  { color: var(--bad); border-color: rgba(248, 113, 113, 0.4); }
+.hkind.move { color: var(--accent); border-color: rgba(251, 191, 36, 0.4); }
+
+/* ---------- Discord embed preview ----------
+   Deliberately Discord's colours, not the app's: this answers "how will it
+   look over there", so matching the backoffice theme would defeat it. */
+
+.preview-label { margin: 18px 0 6px; }
+
+.dc {
+  background: #313338;
+  border: 1px solid #232428;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 12px;
+  color: #dbdee1;
+  font-size: 14px;
+  line-height: 1.4;
+  min-width: 0;
 }
+.dc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.dc-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-text);
+  display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none;
+}
+.dc-name { color: #f2f3f5; font-weight: 600; font-size: 14px; }
+.dc-badge {
+  background: #5865f2; color: #fff; font-size: 10px; font-weight: 600;
+  padding: 1px 5px; border-radius: 3px; letter-spacing: 0.02em;
+}
+.dc-time { color: #949ba4; font-size: 11px; }
+
+.dc-mention {
+  color: #c9cdfb; background: rgba(88, 101, 242, 0.15);
+  display: inline-block; border-radius: 3px; padding: 0 2px; margin-bottom: 6px;
+}
+
+.dc-embed {
+  background: #2b2d31;
+  border-left: 4px solid #5865f2;
+  border-radius: 4px;
+  padding: 12px 16px 12px 12px;
+  max-width: 520px;
+}
+.dc-title { color: #f2f3f5; font-weight: 600; margin-bottom: 6px; }
+.dc-title-plain { color: #f2f3f5; font-weight: 700; margin-bottom: 4px; }
+.dc-desc { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dc-desc code, .dc-quote code {
+  background: #1e1f22; border-radius: 3px; padding: 1px 4px; font-size: 13px;
+}
+.dc-field { margin-top: 10px; }
+.dc-field-name { color: #f2f3f5; font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+.dc-field-value { font-size: 13px; }
+.dc-plain { white-space: pre-wrap; }
+.dc-quote {
+  border-left: 4px solid #4e5058; margin: 8px 0 0; padding: 2px 0 2px 10px; color: #b5bac1;
+}
+.dc-note { margin: 10px 0 0; }

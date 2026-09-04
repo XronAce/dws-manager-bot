@@ -34,7 +34,7 @@ async def list_events(session: DbSession, _: AdminUser):
 
 @router.post("", response_model=EventOut, status_code=status.HTTP_201_CREATED)
 async def create_event(payload: EventCreate, session: DbSession, user: AdminUser):
-    defn = EventDefinition(**payload.model_dump())
+    defn = EventDefinition(**payload.model_dump(), created_by_name=user.username)
     session.add(defn)
     try:
         await session.flush()
@@ -55,6 +55,7 @@ async def update_event(event_id: int, payload: EventCreate, session: DbSession, 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such event")
     for field, value in payload.model_dump().items():
         setattr(defn, field, value)
+    defn.updated_by_name = user.username
     await write_audit(session, user, "event.update", "event", defn.id, {"key": defn.key})
     await session.commit()
     return await _out(session, defn)
