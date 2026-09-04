@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from ..config import get_settings
 from ..models import Announcement
+from ..occurrences import Occurrence
 
 log = logging.getLogger(__name__)
 
@@ -54,13 +55,32 @@ class AllianceBot(commands.Bot):
 
     # ---------------------------------------------------------------- sending
 
-    def render(self, ann: Announcement) -> tuple[str | None, discord.Embed | None]:
+    @staticmethod
+    def _reschedule_lines(occurrence: Occurrence | None) -> list[str]:
+        """Why this date is not where members expect it.
+
+        Uses Discord's own timestamp markup so the original slot renders in
+        each member's timezone, the same as every other time the bot posts.
+        """
+        if occurrence is None or not occurrence.moved:
+            return []
+        was = int(occurrence.original_starts_at.timestamp())
+        lines = [f"Rescheduled — was <t:{was}:F>"]
+        if occurrence.note:
+            lines.append(occurrence.note)
+        return lines
+
+    def render(
+        self, ann: Announcement, occurrence: Occurrence | None = None
+    ) -> tuple[str | None, discord.Embed | None]:
         """Turn an announcement row into Discord message parts."""
         prefix = f"{ann.mention}\n" if ann.mention else ""
+        moved = self._reschedule_lines(occurrence)
 
         if not ann.use_embed:
             title = f"**{ann.title}**\n" if ann.title else ""
-            return f"{prefix}{title}{ann.body}", None
+            tail = ("\n\n> " + "\n> ".join(moved)) if moved else ""
+            return f"{prefix}{title}{ann.body}{tail}", None
 
         colour = discord.Colour.blurple()
         if ann.embed_color:
@@ -73,16 +93,20 @@ class AllianceBot(commands.Bot):
             description=ann.body,
             colour=colour,
         )
+        if moved:
+            embed.add_field(name="⏰ Rescheduled", value="\n".join(moved), inline=False)
         embed.set_footer(text="DWS Alliance Manager")
         # The mention must sit in `content`; mentions inside an embed do not ping.
         return (prefix or None), embed
 
-    async def send_announcement(self, ann: Announcement) -> None:
+    async def send_announcement(
+        self, ann: Announcement, occurrence: Occurrence | None = None
+    ) -> None:
         channel = self.get_channel(ann.channel_id) or await self.fetch_channel(ann.channel_id)
         if not isinstance(channel, discord.abc.Messageable):
             raise RuntimeError(f"channel {ann.channel_id} is not messageable")
 
-        content, embed = self.render(ann)
+        content, embed = self.render(ann, occurrence)
         allowed = discord.AllowedMentions(everyone=True, roles=True, users=True)
         await channel.send(content=content, embed=embed, allowed_mentions=allowed)
         log.info(

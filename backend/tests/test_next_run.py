@@ -103,7 +103,8 @@ async def test_event_with_no_upcoming_occurrence_reports_nothing():
 
 
 async def test_unlinked_announcement_is_unaffected():
-    out = await mod._with_next_run(None, make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
+    ann = make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None)
+    out = await mod._with_next_run(None, ann)
     assert out.next_run_at is None
 
 
@@ -120,5 +121,6 @@ async def test_both_times_are_reported_and_differ_by_the_lead():
 
 
 async def test_non_event_announcements_have_no_event_time():
-    out = await mod._with_next_run(None, make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None))
+    ann = make_ann(kind=ScheduleKind.CRON, cron_expr="0 9 * * *", event=None)
+    out = await mod._with_next_run(None, ann)
     assert out.event_starts_at is None

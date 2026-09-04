@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from .db import SessionLocal
 from .models import Announcement, ScheduleKind
-from .occurrences import resolve_occurrences
+from .occurrences import Occurrence, resolve_occurrences
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +33,15 @@ PLANNER_HORIZON_MINUTES = 90
 
 
 class Sender(Protocol):
-    """Anything that can deliver a rendered announcement to a channel."""
+    """Anything that can deliver a rendered announcement to a channel.
 
-    def __call__(self, announcement: Announcement) -> Awaitable[None]: ...
+    `occurrence` is set only for event-linked announcements, and lets the
+    message say that this date was rescheduled and why.
+    """
+
+    def __call__(
+        self, announcement: Announcement, occurrence: Occurrence | None = None
+    ) -> Awaitable[None]: ...
 
 
 class AnnouncementScheduler:
@@ -163,24 +169,32 @@ class AnnouncementScheduler:
                     self._fire,
                     DateTrigger(run_date=fire_at),
                     id=job_id,
-                    args=[ann.id],
+                    # The occurrence travels with the job so the message can
+                    # mention a reschedule; re-resolved at fire time so a note
+                    # edited after planning still reaches the post.
+                    args=[ann.id, occurrence.isoformat()],
                     replace_existing=True,
                     misfire_grace_time=300,
                 )
 
     # ------------------------------------------------------------------ fire
 
-    async def _fire(self, announcement_id: int) -> None:
+    async def _fire(self, announcement_id: int, occurrence_iso: str | None = None) -> None:
         if self._send is None:
             log.error("no sender bound; dropping announcement %s", announcement_id)
             return
 
         async with SessionLocal() as session:
-            ann = await session.get(Announcement, announcement_id)
+            ann = await session.scalar(
+                select(Announcement)
+                .where(Announcement.id == announcement_id)
+                .options(selectinload(Announcement.event))
+            )
             if ann is None or not ann.enabled:
                 return
+            occurrence = await self._occurrence_for(session, ann, occurrence_iso)
             try:
-                await self._send(ann)
+                await self._send(ann, occurrence)
                 ann.last_fired_at = datetime.now(ZoneInfo("UTC"))
                 ann.fire_count += 1
                 ann.last_error = None
@@ -190,6 +204,19 @@ class AnnouncementScheduler:
                 log.exception("announcement %s failed to send", announcement_id)
                 ann.last_error = f"{type(exc).__name__}: {exc}"[:2000]
             await session.commit()
+
+    @staticmethod
+    async def _occurrence_for(
+        session, ann: Announcement, occurrence_iso: str | None
+    ) -> Occurrence | None:
+        """Find the occurrence this job was queued for, if any."""
+        if not occurrence_iso or ann.kind != ScheduleKind.EVENT or not ann.event:
+            return None
+        target = datetime.fromisoformat(occurrence_iso)
+        for candidate in await resolve_occurrences(session, ann.event, count=5):
+            if candidate.starts_at == target:
+                return candidate
+        return None
 
 
 scheduler = AnnouncementScheduler()

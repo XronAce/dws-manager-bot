@@ -125,7 +125,7 @@ async def test_announcement(announcement_id: int, session: DbSession, user: Admi
     """
     from ...discord_bot.bot import bot
 
-    ann = await session.get(Announcement, announcement_id)
+    ann = await _reload_one(session, announcement_id)
     if ann is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
     if not bot.is_ready():
@@ -133,8 +133,16 @@ async def test_announcement(announcement_id: int, session: DbSession, user: Admi
             status.HTTP_409_CONFLICT, "The bot is not connected to Discord yet — try again"
         )
 
+    # Resolve the same occurrence the scheduler would, so a test of a moved
+    # date shows the reschedule notice rather than a message members will
+    # never actually see.
+    occurrence = None
+    if ann.kind == ScheduleKind.EVENT and ann.event and ann.event.enabled:
+        upcoming = await resolve_occurrences(session, ann.event, count=1)
+        occurrence = upcoming[0] if upcoming else None
+
     try:
-        await bot.send_announcement(ann)
+        await bot.send_announcement(ann, occurrence)
     except Exception as exc:
         # Deliberately 409 and not 502. Cloudflare treats an origin 5xx as its
         # own gateway failure: it replaces the body with "error code: 502" and
