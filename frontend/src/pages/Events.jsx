@@ -7,6 +7,13 @@ import DateTimeField from '../components/DateTimeField.jsx'
 
 // Weekday names in the viewer's language; the indices stay 0 = Monday, which
 // is what the API stores.
+/** Matches the announcement cards: no seconds, no year, weekday included. */
+const fmtWhen = (iso) =>
+  new Intl.DateTimeFormat(undefined, {
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(iso))
+
 const DAYS = (() => {
   const f = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
   return Array.from({ length: 7 }, (_, i) => f.format(new Date(2024, 0, 1 + i)))
@@ -157,7 +164,7 @@ export default function Events() {
             </div>
             {row.upcoming?.length > 0 && (
               <div className="card-meta">
-                <span>Next: {new Date(row.upcoming[0]).toLocaleString()}</span>
+                <span>Next: {fmtWhen(row.upcoming[0])}</span>
                 <span className="muted">{withServerTime(row.upcoming[0])}</span>
               </div>
             )}
@@ -318,7 +325,7 @@ export default function Events() {
               <ul>
                 {preview.slice(0, 6).map((iso) => (
                   <li key={iso}>
-                    {new Date(iso).toLocaleString()}{' '}
+                    {fmtWhen(iso)}{' '}
                     <span className="muted">· {withServerTime(iso)}</span>
                   </li>
                 ))}

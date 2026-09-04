@@ -53,8 +53,10 @@ export default function App() {
     return (
       <div className="centered">
         <div className="login-card">
-          <h1>DWS Alliance Manager</h1>
-          <p className="muted">Sign in with the Discord account that holds your officer role.</p>
+          <h1>Alliance Manager</h1>
+          <p className="muted">
+            Sign in with the Discord account that holds your officer role.
+          </p>
           {authError && <p className="error">{authError}</p>}
           <a className="btn primary" href={loginUrl()}>
             Sign in with Discord
@@ -69,18 +71,34 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <div className="brand">
-          <strong>DWS Alliance Manager</strong>
-          {health && (
-            <span className="health" title={`${health.scheduled_jobs} jobs scheduled`}>
-              <span className={`dot ${health.discord ? 'ok' : 'bad'}`} />
-              {health.bot_user ?? 'bot offline'}
-              <span className={`dot ${health.database ? 'ok' : 'bad'}`} />
-              db
-            </span>
-          )}
+        <div className="header-top">
+          <div className="brand">
+            <span className="mark" aria-hidden="true">P</span>
+            <strong>Alliance Manager</strong>
+          </div>
+          <div className="user">
+            {/* The health strip is the first thing to go when space is tight. */}
+            {health && (
+              <span className="health" title={`${health.scheduled_jobs} scheduled`}>
+                <span className={`dot ${health.discord ? 'ok' : 'bad'}`} />
+                <span className={`dot ${health.database ? 'ok' : 'bad'}`} />
+              </span>
+            )}
+            <span className="who muted small">{user.username}</span>
+            <button
+              className="btn ghost small"
+              onClick={() => {
+                clearToken()
+                window.location.reload()
+              }}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
-        <nav>
+        {/* Scrolls sideways rather than wrapping, which would double the
+            header height on a narrow phone. */}
+        <nav className="tabs">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -91,18 +109,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="user">
-          <span className="muted">{user.username}</span>
-          <button
-            className="btn ghost"
-            onClick={() => {
-              clearToken()
-              window.location.reload()
-            }}
-          >
-            Sign out
-          </button>
-        </div>
       </header>
       <main>
         <Active />

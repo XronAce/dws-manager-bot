@@ -217,8 +217,8 @@ export default function Announcements() {
                   <dd>
                     {fmtWhen(row.event_starts_at)}{' '}
                     <span className="muted">· {withServerTime(row.event_starts_at)}</span>
-                    <span className="muted">
-                      {' '}— {row.lead_minutes} min after this posts
+                    <span className="muted lead">
+                      {row.lead_minutes} min after this posts
                     </span>
                   </dd>
                 </>
