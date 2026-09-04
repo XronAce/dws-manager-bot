@@ -231,15 +231,24 @@ class AppUser(Base, TimestampMixin):
 class WarLineup(Base, TimestampMixin):
     """The alliance's Pass Occupation War line-up — one shared plan.
 
-    `slug` keys the plan so a second one ("s5-west", say) needs no migration;
-    the map generator uses "default". `order` is the priority list of member
-    names, which is the whole point: it is a hand-tuned ordering, not derivable
-    from BGB CP, and mercenaries have no CP to rank by at all.
+    Two kinds share the table. "official" is the published plan every member
+    loads; "draft:<discord_id>" is one officer's working copy. Publishing copies a
+    draft into "official" rather than moving it, so nobody's work is consumed by
+    someone else picking a different plan.
+
+    `order` is the priority list of member names, which is the whole point: it is a
+    hand-tuned ordering, not derivable from BGB CP, and mercenaries have no CP to
+    rank by at all.
     """
 
     __tablename__ = "war_lineups"
 
     slug: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # NULL marks the published plan everyone loads; a draft belongs to one officer,
+    # so publishing never destroys the draft it was copied from.
+    owner_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
+    owner_name: Mapped[str | None] = mapped_column(String(100))
+    title: Mapped[str | None] = mapped_column(String(80))
     order: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     mercs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     opts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

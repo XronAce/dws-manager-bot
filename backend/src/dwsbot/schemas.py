@@ -206,6 +206,7 @@ class LineupIn(BaseModel):
     order: list[str] = Field(default_factory=list)
     mercs: list[MercIn] = Field(default_factory=list)
     opts: dict = Field(default_factory=dict)
+    title: str | None = Field(default=None, max_length=80)
 
 
 class LineupOut(ORMModel):
@@ -213,8 +214,22 @@ class LineupOut(ORMModel):
     order: list[str]
     mercs: list[MercIn]
     opts: dict
+    title: str | None = None
+    owner_id: int | None = None
+    owner_name: str | None = None
     updated_by_name: str | None = None
     updated_at: datetime | None = None
+
+
+class LineupSummary(ORMModel):
+    slug: str
+    title: str | None = None
+    owner_id: int | None = None
+    owner_name: str | None = None
+    updated_by_name: str | None = None
+    updated_at: datetime | None = None
+    members: int = 0
+    mercs: int = 0
 
 
 class HealthOut(BaseModel):
