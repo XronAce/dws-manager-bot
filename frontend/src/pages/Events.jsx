@@ -3,7 +3,12 @@ import { api } from '../lib/api.js'
 import Banner from '../components/Banner.jsx'
 import DateTimeField from '../components/DateTimeField.jsx'
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+// Weekday names in the viewer's language; the indices stay 0 = Monday, which
+// is what the API stores.
+const DAYS = (() => {
+  const f = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
+  return Array.from({ length: 7 }, (_, i) => f.format(new Date(2024, 0, 1 + i)))
+})()
 
 const EMPTY = {
   key: '',

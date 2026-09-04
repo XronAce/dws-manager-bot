@@ -14,11 +14,34 @@ import { useEffect, useRef, useState } from 'react'
  * land a 09:00 pick on the previous day.
  */
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
+/**
+ * Month and weekday names in the viewer's own language, rather than hardcoded
+ * English. The card timestamps already follow the browser locale, so a Korean
+ * officer was reading Korean dates above an English calendar.
+ *
+ * The week still starts on Monday everywhere. That is not a locale question
+ * here: the backend stores weekdays as 0 = Monday, and the Events form's day
+ * chips write those same indices.
+ */
+const WEEKDAYS = (() => {
+  const f = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
+  // 1 Jan 2024 was a Monday, so seven days from there covers the week in order.
+  return Array.from({ length: 7 }, (_, i) => f.format(new Date(2024, 0, 1 + i)))
+})()
+
+/**
+ * The month header. Formatted whole rather than as month + " " + year: Korean
+ * and Japanese lead with the year ("2026년 9월"), so concatenating in English
+ * word order reads backwards.
+ */
+const fmtMonthYear = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric', month: 'long',
+})
+
+/** The trigger's own label, e.g. "5 Sep 2026" or "2026년 9월 5일". */
+const fmtDay = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric', month: 'short', day: 'numeric',
+})
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -111,7 +134,7 @@ export default function DateTimeField({
       return values.length ? `${values.length} date${values.length > 1 ? 's' : ''} selected` : placeholder
     }
     if (!selected) return placeholder
-    const day = `${selected.getDate()} ${MONTHS[selected.getMonth()].slice(0, 3)} ${selected.getFullYear()}`
+    const day = fmtDay.format(selected)
     return mode === 'date' ? day : `${day}, ${pad(selected.getHours())}:${pad(selected.getMinutes())}`
   })()
 
@@ -134,7 +157,7 @@ export default function DateTimeField({
         <div className="dtf-pop" role="dialog" aria-label="Choose a date">
           <div className="dtf-head">
             <button type="button" className="dtf-nav" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} aria-label="Previous month">‹</button>
-            <strong>{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</strong>
+            <strong>{fmtMonthYear.format(cursor)}</strong>
             <button type="button" className="dtf-nav" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} aria-label="Next month">›</button>
           </div>
 
