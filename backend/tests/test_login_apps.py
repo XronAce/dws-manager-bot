@@ -66,3 +66,26 @@ def test_entry_rule(app, is_admin, in_guild, expected):
     membership for the map."""
     permitted = is_admin if app == "backoffice" else in_guild
     assert permitted is expected
+
+
+# ----------------------------- what to call someone --------------------------
+
+@pytest.mark.parametrize(
+    "nick, global_name, username, expected",
+    [
+        ("Dubai88", "donggi", "xronace", "Dubai88"),      # server nickname wins
+        (None, "donggi", "xronace", "donggi"),            # no nickname set
+        ("", "donggi", "xronace", "donggi"),              # cleared nickname
+        ("   ", "donggi", "xronace", "donggi"),           # whitespace is not a name
+        (None, None, "xronace", "xronace"),               # legacy account
+        ("  Kagura Forger ", "x", "y", "Kagura Forger"),  # trimmed
+        (None, None, None, "unknown"),
+    ],
+)
+def test_display_name_prefers_the_server_nickname(nick, global_name, username, expected):
+    user = {"global_name": global_name, "username": username}
+    assert security.display_name(user, nick) == expected
+
+
+def test_display_name_handles_cjk_nicknames():
+    assert security.display_name({"global_name": "x"}, "미미짱") == "미미짱"

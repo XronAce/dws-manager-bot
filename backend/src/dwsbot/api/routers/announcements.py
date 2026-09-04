@@ -1,10 +1,14 @@
 """Backoffice CRUD for scheduled announcements."""
 from __future__ import annotations
 
+from datetime import timedelta
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-from ...models import Announcement
+from ...models import Announcement, ScheduleKind
+from ...recurrence import next_occurrences
 from ...scheduler import scheduler
 from ...schemas import AnnouncementCreate, AnnouncementOut, AnnouncementUpdate
 from ..deps import AdminUser, DbSession, write_audit
@@ -13,8 +17,9 @@ router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
 def _with_next_run(ann: Announcement) -> AnnouncementOut:
-    """Attach the live next-fire time from the running scheduler."""
+    """Attach the next fire time, however this announcement is driven."""
     out = AnnouncementOut.model_validate(ann)
+
     for job in scheduler.jobs:
         if job.id != f"ann:{ann.id}" and not job.id.startswith(f"ann:{ann.id}:"):
             continue
@@ -23,12 +28,42 @@ def _with_next_run(ann: Announcement) -> AnnouncementOut:
         nxt = getattr(job, "next_run_time", None)
         if nxt and (out.next_run_at is None or nxt < out.next_run_at):
             out.next_run_at = nxt
+
+    # An event-linked announcement holds no standing job: the planner only
+    # materialises one shortly before each occurrence. Reading the job list
+    # alone therefore showed "Not scheduled" for a correctly configured
+    # announcement almost all of the time, so derive it from the event.
+    if (
+        out.next_run_at is None
+        and ann.kind == ScheduleKind.EVENT
+        and ann.event
+        and ann.event.enabled
+    ):
+        upcoming = next_occurrences(ann.event, count=1)
+        if upcoming:
+            out.next_run_at = upcoming[0] - timedelta(minutes=ann.lead_minutes)
     return out
+
+
+# `ann.event` is read above, and an async session cannot lazy-load mid-request,
+# so every path that builds an AnnouncementOut eager-loads the relationship.
+_WITH_EVENT = (selectinload(Announcement.event),)
+
+
+async def _reload_one(session, announcement_id: int) -> Announcement | None:
+    """Re-read a row with its event attached, for the response."""
+    return await session.scalar(
+        select(Announcement).where(Announcement.id == announcement_id).options(*_WITH_EVENT)
+    )
 
 
 @router.get("", response_model=list[AnnouncementOut])
 async def list_announcements(session: DbSession, _: AdminUser):
-    rows = (await session.scalars(select(Announcement).order_by(Announcement.id))).all()
+    rows = (
+        await session.scalars(
+            select(Announcement).order_by(Announcement.id).options(*_WITH_EVENT)
+        )
+    ).all()
     return [_with_next_run(r) for r in rows]
 
 
@@ -41,12 +76,12 @@ async def create_announcement(payload: AnnouncementCreate, session: DbSession, u
                       {"name": ann.name})
     await session.commit()
     await scheduler.reload()
-    return _with_next_run(ann)
+    return _with_next_run(await _reload_one(session, ann.id))
 
 
 @router.get("/{announcement_id}", response_model=AnnouncementOut)
 async def get_announcement(announcement_id: int, session: DbSession, _: AdminUser):
-    ann = await session.get(Announcement, announcement_id)
+    ann = await _reload_one(session, announcement_id)
     if ann is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such announcement")
     return _with_next_run(ann)
@@ -65,7 +100,7 @@ async def update_announcement(
                       {"name": ann.name})
     await session.commit()
     await scheduler.reload()
-    return _with_next_run(ann)
+    return _with_next_run(await _reload_one(session, ann.id))
 
 
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)

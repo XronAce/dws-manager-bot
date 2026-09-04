@@ -106,9 +106,22 @@ async def exchange_code(code: str) -> str:
     return resp.json()["access_token"]
 
 
-async def fetch_identity(access_token: str) -> tuple[dict, list[str], bool]:
-    """Return the Discord user, their role IDs in the alliance guild, and whether
-    they are in that guild at all.
+def display_name(user: dict, nick: str | None) -> str:
+    """What to call someone, most alliance-specific first.
+
+    Members set their server nickname to their in-game name, so it identifies a
+    line-up's owner far better than a Discord account name does. Falls back to the
+    account's display name, then to the raw username.
+    """
+    for candidate in (nick, user.get("global_name"), user.get("username")):
+        if candidate and str(candidate).strip():
+            return str(candidate).strip()
+    return "unknown"
+
+
+async def fetch_identity(access_token: str) -> tuple[dict, list[str], bool, str | None]:
+    """Return the Discord user, their role IDs in the alliance guild, whether they
+    are in that guild at all, and their nickname there.
 
     A member with no roles and a non-member both yield an empty role list, so
     membership has to be reported separately -- the map generator admits any
@@ -127,8 +140,9 @@ async def fetch_identity(access_token: str) -> tuple[dict, list[str], bool]:
         )
         if member_resp.status_code != 200:
             # Not in the alliance server at all.
-            return user, [], False
-        return user, member_resp.json().get("roles", []), True
+            return user, [], False, None
+        member = member_resp.json()
+        return user, member.get("roles", []), True, member.get("nick")
 
 
 # ----------------------------------------------------------------------- jwt

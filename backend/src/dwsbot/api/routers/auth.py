@@ -14,6 +14,7 @@ from ...models import AppUser
 from ...schemas import MeOut
 from ...security import (
     authorize_url,
+    display_name,
     exchange_code,
     fetch_identity,
     issue_token,
@@ -46,7 +47,7 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     back = settings.frontend_url if app == "backoffice" else settings.passwar_url
 
     access_token = await exchange_code(code)
-    user, role_ids, in_guild = await fetch_identity(access_token)
+    user, role_ids, in_guild, nick = await fetch_identity(access_token)
 
     # OAuth gives role IDs; the config names roles. Resolve via the live guild
     # so officers can rename roles without editing environment variables.
@@ -71,7 +72,7 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     if row is None:
         row = AppUser(discord_id=discord_id)
         session.add(row)
-    row.username = user.get("global_name") or user.get("username")
+    row.username = display_name(user, nick)   # server nickname wins
     row.avatar = user.get("avatar")
     row.is_admin = is_admin       # refreshed from live roles on every login
     row.last_login_at = datetime.now(UTC)
