@@ -43,7 +43,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from .api.routers import announcements, auth, events, history, lineups, members, meta
+    from .api.routers import (
+        announcements,
+        auth,
+        events,
+        history,
+        lineups,
+        members,
+        meta,
+        setup,
+    )
 
     app.include_router(meta.router)
     app.include_router(auth.router)
@@ -51,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(events.router)
     app.include_router(members.router)
     app.include_router(history.router)
+    app.include_router(setup.router)
     app.include_router(lineups.router)
     return app
 

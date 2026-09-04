@@ -349,24 +349,16 @@ export default function Announcements() {
             </label>
           </div>
 
-          {preview === 'form' && (
-            <>
-              <div className="preview-label muted small">How it will look in Discord</div>
-              <EmbedPreview announcement={form} />
-            </>
-          )}
+          <div className="wiz-preview form-preview">
+            <div className="preview-label muted small">How it will look in Discord</div>
+            <EmbedPreview announcement={form} />
+          </div>
 
           <div className="card-actions">
             <button className="btn primary" type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Save'}
             </button>
-            <button
-              className="btn"
-              type="button"
-              onClick={() => setPreview(preview === 'form' ? null : 'form')}
-            >
-              {preview === 'form' ? 'Hide preview' : 'Preview'}
-            </button>
+
             <button className="btn" type="button" onClick={() => setForm(null)}>
               Cancel
             </button>

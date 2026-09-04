@@ -70,7 +70,15 @@ async function request(path, options = {}) {
     // errors there for validation failures; flatten both to one line.
     const detail = body?.detail
     const message = Array.isArray(detail)
-      ? detail.map((d) => `${d.loc?.slice(1).join('.')}: ${d.msg}`).join('; ')
+      ? detail
+          .map((d) => {
+            // Pydantic prefixes model-level errors with "Value error, ", and
+            // their loc is empty, which used to render as a leading colon.
+            const text = String(d.msg).replace(/^Value error,\s*/, '')
+            const field = d.loc?.slice(1).filter((p) => p !== 'body').join('.')
+            return field ? `${field}: ${text}` : text
+          })
+          .join('; ')
       : detail || `Request failed (${res.status})`
     throw new ApiError(res.status, message)
   }
@@ -107,6 +115,9 @@ export const api = {
       `/events/${eventId}/occurrences?original_starts_at=${encodeURIComponent(originalStartsAt)}`,
       { method: 'DELETE' },
     ),
+
+  guidedSetup: (data) =>
+    request('/setup/event-announcement', { method: 'POST', body: JSON.stringify(data) }),
 
   previewSchedule: (data) =>
     request('/announcements/preview-schedule', { method: 'POST', body: JSON.stringify(data) }),

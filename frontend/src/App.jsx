@@ -3,8 +3,10 @@ import { api, clearToken, consumeTokenFromUrl, getToken, loginUrl } from './lib/
 import Announcements from './pages/Announcements.jsx'
 import Events from './pages/Events.jsx'
 import History from './pages/History.jsx'
+import Setup from './pages/Setup.jsx'
 
 const TABS = [
+  { id: 'setup', label: 'Set up', Component: Setup },
   { id: 'announcements', label: 'Announcements', Component: Announcements },
   { id: 'events', label: 'Events', Component: Events },
   { id: 'history', label: 'History', Component: History },
@@ -14,7 +16,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [status, setStatus] = useState('loading')
   const [authError, setAuthError] = useState(null)
-  const [tab, setTab] = useState('announcements')
+  const [tab, setTab] = useState('setup')
   const [health, setHealth] = useState(null)
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function App() {
         </nav>
       </header>
       <main>
-        <Active />
+        <Active onDone={setTab} />
       </main>
     </div>
   )

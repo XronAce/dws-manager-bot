@@ -77,15 +77,17 @@ export default function Events() {
 
   // Ask the API what this schedule would actually produce, so a rotation can be
   // sanity-checked before it is saved.
-  async function runPreview() {
-    setError(null)
-    try {
-      setPreview(await api.previewEvent(toPayload(form)))
-    } catch (err) {
-      setError(err.message)
-      setPreview([])
-    }
-  }
+  // Live: a rotation cannot be checked by reading its settings, so the dates
+  // it produces have to be on screen while they are being chosen.
+  useEffect(() => {
+    if (!form) { setPreview([]); return undefined }
+    const id = setTimeout(() => {
+      api.previewEvent(toPayload(form))
+        .then(setPreview)
+        .catch(() => setPreview([]))
+    }, 300)
+    return () => clearTimeout(id)
+  }, [form])
 
   async function save(e) {
     e.preventDefault()
@@ -329,8 +331,8 @@ export default function Events() {
           </div>
 
           {preview.length > 0 && (
-            <div className="banner ok">
-              <strong>Next occurrences:</strong>
+            <div className="sched-preview">
+              <strong>So it happens on</strong>
               <ul>
                 {preview.slice(0, 6).map((iso) => (
                   <li key={iso}>
@@ -346,7 +348,6 @@ export default function Events() {
             <button className="btn primary" type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Save'}
             </button>
-            <button className="btn" type="button" onClick={runPreview}>Preview schedule</button>
             <button className="btn" type="button" onClick={() => { setForm(null); setPreview([]) }}>
               Cancel
             </button>
