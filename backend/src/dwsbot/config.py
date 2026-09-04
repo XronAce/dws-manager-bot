@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Where the API bounces the browser once a session is minted.
     frontend_url: str = "https://dws-manager-bot.github.io"
 
+    # The Pass Occupation War map generator — a second static frontend on the
+    # same API. Separate origin, so it needs its own CORS entry below.
+    passwar_url: str = "https://pou-rocks.github.io/pou-pass-war"
+
     # Discord role names that may use the backoffice and admin bot commands.
     admin_roles: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["R5", "R4"]
@@ -45,8 +49,12 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "https://dws-manager-bot.github.io",
+            # CORS matches scheme+host only, so this covers /pou-pass-war and the
+            # hive map alike — both are served from the same Pages origin.
+            "https://pou-rocks.github.io",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://localhost:8742",
         ]
     )
 

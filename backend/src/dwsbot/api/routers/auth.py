@@ -27,24 +27,26 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/login", summary="Begin Discord OAuth2 login")
-async def login() -> RedirectResponse:
+async def login(app: str = Query("backoffice")) -> RedirectResponse:
     settings = get_settings()
     if not settings.oauth_enabled:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "OAuth is not configured — set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET",
         )
-    return RedirectResponse(authorize_url(make_state()))
+    return RedirectResponse(authorize_url(make_state(app)))
 
 
 @router.get("/callback", summary="OAuth2 redirect target")
 async def callback(session: DbSession, code: str = Query(...), state: str = Query(...)):
     settings = get_settings()
-    if not verify_state(state):
+    app = verify_state(state)
+    if app is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Login state expired or invalid")
+    back = settings.frontend_url if app == "backoffice" else settings.passwar_url
 
     access_token = await exchange_code(code)
-    user, role_ids = await fetch_identity(access_token)
+    user, role_ids, in_guild = await fetch_identity(access_token)
 
     # OAuth gives role IDs; the config names roles. Resolve via the live guild
     # so officers can rename roles without editing environment variables.
@@ -75,15 +77,19 @@ async def callback(session: DbSession, code: str = Query(...), state: str = Quer
     row.last_login_at = datetime.now(UTC)
     await session.commit()
 
-    if not is_admin:
+    # The backoffice is officers-only. The map generator admits any member of the
+    # guild and lets the token's is_admin decide who may save the shared plan.
+    permitted = is_admin if app == "backoffice" else in_guild
+    if not permitted:
         # Bounce back with a reason rather than handing out a useless token.
-        return RedirectResponse(
-            f"{settings.frontend_url}/#" + urlencode({"error": "not_authorised"})
-        )
+        reason = "not_authorised" if app == "backoffice" else "not_in_guild"
+        return RedirectResponse(f"{back}/#" + urlencode({"error": reason}))
 
-    token = issue_token(discord_id=discord_id, username=row.username or "?", is_admin=True)
+    token = issue_token(
+        discord_id=discord_id, username=row.username or "?", is_admin=is_admin
+    )
     # Fragment, not query string: it never reaches a server log or a Referer header.
-    return RedirectResponse(f"{settings.frontend_url}/#" + urlencode({"token": token}))
+    return RedirectResponse(f"{back}/#" + urlencode({"token": token}))
 
 
 @router.get("/me", response_model=MeOut, summary="Who am I")

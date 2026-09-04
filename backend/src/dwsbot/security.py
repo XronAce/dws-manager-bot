@@ -28,29 +28,41 @@ _ALGORITHM = "HS256"
 
 # --------------------------------------------------------------------- state
 
-def make_state() -> str:
-    """A CSRF state token that needs no server-side session store."""
+APPS = ("backoffice", "passwar")
+
+
+def make_state(app: str = "backoffice") -> str:
+    """A CSRF state token that needs no server-side session store.
+
+    It also carries which frontend started the login, so one registered Discord
+    redirect URI can serve several apps -- adding a new one needs no change in
+    the Discord developer portal.
+    """
     settings = get_settings()
+    app = app if app in APPS else "backoffice"
     nonce = secrets.token_urlsafe(16)
     issued = str(int(time.time()))
     sig = hmac.new(
-        settings.jwt_secret.encode(), f"{nonce}.{issued}".encode(), "sha256"
+        settings.jwt_secret.encode(), f"{nonce}.{app}.{issued}".encode(), "sha256"
     ).hexdigest()[:32]
-    return f"{nonce}.{issued}.{sig}"
+    return f"{nonce}.{app}.{issued}.{sig}"
 
 
-def verify_state(state: str, max_age_seconds: int = 600) -> bool:
+def verify_state(state: str, max_age_seconds: int = 600) -> str | None:
+    """Return the app the login began from, or None if the state is bad or stale."""
     settings = get_settings()
     try:
-        nonce, issued, sig = state.split(".")
+        nonce, app, issued, sig = state.split(".")
     except ValueError:
-        return False
+        return None
     expected = hmac.new(
-        settings.jwt_secret.encode(), f"{nonce}.{issued}".encode(), "sha256"
+        settings.jwt_secret.encode(), f"{nonce}.{app}.{issued}".encode(), "sha256"
     ).hexdigest()[:32]
     if not hmac.compare_digest(sig, expected):
-        return False
-    return (time.time() - int(issued)) <= max_age_seconds
+        return None
+    if (time.time() - int(issued)) > max_age_seconds:
+        return None
+    return app if app in APPS else "backoffice"
 
 
 # --------------------------------------------------------------------- oauth
@@ -94,8 +106,14 @@ async def exchange_code(code: str) -> str:
     return resp.json()["access_token"]
 
 
-async def fetch_identity(access_token: str) -> tuple[dict, list[str]]:
-    """Return the Discord user and their role IDs in the alliance guild."""
+async def fetch_identity(access_token: str) -> tuple[dict, list[str], bool]:
+    """Return the Discord user, their role IDs in the alliance guild, and whether
+    they are in that guild at all.
+
+    A member with no roles and a non-member both yield an empty role list, so
+    membership has to be reported separately -- the map generator admits any
+    member, while the backoffice still needs an officer role.
+    """
     settings = get_settings()
     headers = {"Authorization": f"Bearer {access_token}"}
     async with httpx.AsyncClient(timeout=15) as client:
@@ -109,8 +127,8 @@ async def fetch_identity(access_token: str) -> tuple[dict, list[str]]:
         )
         if member_resp.status_code != 200:
             # Not in the alliance server at all.
-            return user, []
-        return user, member_resp.json().get("roles", [])
+            return user, [], False
+        return user, member_resp.json().get("roles", []), True
 
 
 # ----------------------------------------------------------------------- jwt

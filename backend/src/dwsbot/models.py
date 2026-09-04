@@ -228,6 +228,25 @@ class AppUser(Base, TimestampMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class WarLineup(Base, TimestampMixin):
+    """The alliance's Pass Occupation War line-up — one shared plan.
+
+    `slug` keys the plan so a second one ("s5-west", say) needs no migration;
+    the map generator uses "default". `order` is the priority list of member
+    names, which is the whole point: it is a hand-tuned ordering, not derivable
+    from BGB CP, and mercenaries have no CP to rank by at all.
+    """
+
+    __tablename__ = "war_lineups"
+
+    slug: Mapped[str] = mapped_column(String(64), primary_key=True)
+    order: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    mercs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    opts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_by_id: Mapped[int | None] = mapped_column(BigInteger)
+    updated_by_name: Mapped[str | None] = mapped_column(String(100))
+
+
 class AuditLog(Base):
     """Append-only record of backoffice mutations."""
 

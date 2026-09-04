@@ -43,13 +43,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from .api.routers import announcements, auth, events, members, meta
+    from .api.routers import announcements, auth, events, lineups, members, meta
 
     app.include_router(meta.router)
     app.include_router(auth.router)
     app.include_router(announcements.router)
     app.include_router(events.router)
     app.include_router(members.router)
+    app.include_router(lineups.router)
     return app
 
 
