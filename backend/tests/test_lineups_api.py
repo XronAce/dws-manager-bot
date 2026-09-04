@@ -62,6 +62,7 @@ async def client_factory():
         app.dependency_overrides[require_admin] = _admin
         return AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
 
+    build.maker = maker          # tests that need to seed rows directly
     yield build
     await engine.dispose()
 
@@ -218,3 +219,40 @@ async def test_member_cannot_delete_an_officers_draft(client_factory):
         assert (await c.delete(f"/lineups/{D1}")).status_code == 403
     async with client_factory(OFFICER2) as c:
         assert (await c.delete(f"/lineups/{D1}")).status_code == 403
+
+
+# ------------------------ names follow the server nickname -------------------
+
+@pytest.mark.asyncio
+async def test_names_come_from_the_current_nickname_not_the_saved_one(client_factory):
+    """A stored name is a snapshot; app_users carries the truth.
+
+    Someone who saves a plan and later sets a PoU nickname should be labelled the
+    new name even on plans saved before it — which is exactly what went wrong live,
+    where a plan published earlier still read "by gnar_.".
+    """
+    from dwsbot.models import AppUser
+
+    async with client_factory(OFFICER) as c:
+        await c.put(f"/lineups/{D1}", json=PLAN)
+        await c.post(f"/lineups/{D1}/publish")
+
+    async with client_factory.maker() as s:
+        s.add(AppUser(discord_id=OFFICER.discord_id, username="고추바사삭(Goba)", is_admin=True))
+        await s.commit()
+
+    async with client_factory(OFFICER) as c:
+        got = await c.get(f"/lineups/{OFFICIAL}")
+        listed = await c.get("/lineups")
+
+    assert got.json()["updated_by_name"] == "고추바사삭(Goba)"
+    assert all(r["updated_by_name"] == "고추바사삭(Goba)" for r in listed.json())
+
+
+@pytest.mark.asyncio
+async def test_stored_name_is_kept_when_the_person_is_unknown(client_factory):
+    async with client_factory(OFFICER) as c:
+        await c.put(f"/lineups/{D1}", json=PLAN)
+        r = await c.get(f"/lineups/{D1}")
+    # No app_users row exists in this test, so the snapshot stands in.
+    assert r.json()["owner_name"] == "Officer"
